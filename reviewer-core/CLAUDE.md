@@ -35,8 +35,12 @@ src/index.ts            public API barrel
 - `build` is a type-check, not a compile — there is no `dist/`
 - Map-reduce: findings are merged with `reduceReviews()` before grounding, not after
 
-## Writing insights
-After completing non-trivial work, add findings to insights/INSIGHTS.md.
+## Session protocol
 
-**Add:** unexpected behaviors, hidden constraints, non-obvious patterns, decisions with reasoning, gotchas discovered.
-**Do NOT add:** things obvious from code, standard practices, volatile/in-progress state.
+**Start of session:** Read LEARNINGS.md, then confirm with a one-sentence summary of the top 3 most relevant points before beginning work.
+
+**End of session:** After work that involved a non-trivial problem, solution, or discovery, append to the relevant section in reviewer-core/LEARNINGS.md. Do not skip.
+
+**Entry format:** `[YYYY-MM-DD] <finding> — <file:line>`
+**Anti-banality test:** "would this be obvious to anyone reading the code?" — if yes, don't write it.
+Append-only; correct with a dated note, never overwrite. Prune quarterly.

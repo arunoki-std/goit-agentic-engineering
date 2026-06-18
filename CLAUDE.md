@@ -28,17 +28,15 @@ Cross-package links = tsconfig path aliases, NOT npm/pnpm links. Each package ha
 - Secrets go to ~/.devdigest/secrets.json (mode 0600), never .env or DB
 - Each package's node_modules is independent — run `pnpm install` inside the package
 
-## Writing insights
-After completing non-trivial work in this project, add findings to insights/INSIGHTS.md.
+## Session protocol
 
-**Add:**
-- Unexpected behaviors or hidden constraints discovered
-- Non-obvious patterns or conventions that differ from defaults
-- Decisions made with the reasoning behind them
-- Gotchas that cost time to debug
+**Start of session:** Read LEARNINGS.md, then confirm with a one-sentence summary of the top 3 most relevant points before beginning work. This forces active processing, not passive load.
 
-**Do NOT add:**
-- Things obvious from reading the code
-- Standard language/framework practices
-- In-progress or volatile state
-- File-by-file descriptions
+**End of session:** After work that involved a non-trivial problem, solution, or discovery (>30 min), append to the relevant section in the module's LEARNINGS.md. Do not skip — if you skip the wrap-up, the system doesn't learn.
+
+**Rules for entries:**
+- Format: `[YYYY-MM-DD] <finding> — <file:line>`
+- Append-only: add new dated entries; correct with a dated note, never overwrite
+- Test: "would this be obvious to anyone reading the code?" — if yes, don't write it
+- Vague: "async can be tricky" → Useful: "Promise.all() times out after 30 items in the indexer — use Promise.allSettled() with batches of 10"
+- Prune quarterly: stale entries are noise, not signal
