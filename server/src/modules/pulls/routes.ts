@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { and, desc, eq, inArray } from 'drizzle-orm';
+import { estimateCost } from '../../adapters/llm/pricing.js';
 import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
 import * as t from '../../db/schema.js';
@@ -129,6 +130,27 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
+    const totalCostByPr = new Map<string, number | null>();
+    if (prIds.length > 0) {
+      const runRows = await container.db
+        .select({
+          prId: t.agentRuns.prId,
+          model: t.agentRuns.model,
+          tokensIn: t.agentRuns.tokensIn,
+          tokensOut: t.agentRuns.tokensOut,
+        })
+        .from(t.agentRuns)
+        .where(and(inArray(t.agentRuns.prId, prIds), eq(t.agentRuns.status, 'done')));
+
+      for (const rr of runRows) {
+        if (!rr.prId) continue;
+        const c = estimateCost(rr.model ?? '', rr.tokensIn ?? 0, rr.tokensOut ?? 0);
+        const prev = totalCostByPr.get(rr.prId);
+        // If any run has an unknown model (c === null), the total becomes null.
+        totalCostByPr.set(rr.prId, prev === undefined ? c : prev == null || c == null ? null : prev + c);
+      }
+    }
+
     const now = Date.now();
     return rows.map((r) => {
       const review = latestReviewByPr.get(r.id);
@@ -153,6 +175,7 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         opened_at: r.openedAt?.toISOString() ?? null,
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
+        total_cost_usd: totalCostByPr.get(r.id) ?? null,
       };
     });
   });
