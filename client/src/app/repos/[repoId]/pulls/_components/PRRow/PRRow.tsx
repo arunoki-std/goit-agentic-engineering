@@ -5,15 +5,17 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Icon, Avatar, Badge, CircularScore, SeverityBadge } from "@devdigest/ui";
-import type { PrMeta } from "@/lib/types";
+import type { PrMeta, Severity } from "@/lib/types";
 import { SIZE_COLOR, STATUS_META } from "../../constants";
 import { relativeTime, sizeOf } from "../../helpers";
 import { s } from "../../styles";
+import { FindingsPopover } from "../FindingsPopover";
 
 export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
   const t = useTranslations("prReview");
   const router = useRouter();
   const [h, setH] = React.useState(false);
+  const [popoverAnchor, setPopoverAnchor] = React.useState<DOMRect | null>(null);
   const st = STATUS_META[pr.status] ?? STATUS_META.needs_review!;
   const { size, lines } = sizeOf(pr);
   const reviewed = pr.score != null; // null score ⇒ PR has never been reviewed
@@ -60,11 +62,13 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
             return (
               <span
                 key={sev}
-                title={`${count} ${sev}`}
-                style={{ opacity: count === 0 ? 0.35 : 1 }}
+                title={`${count} ${sev} — click to preview`}
+                style={{ opacity: count === 0 ? 0.35 : 1, cursor: count > 0 ? "pointer" : "default" }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  router.push(`/repos/${repoId}/pulls/${pr.number}?tab=findings&severity=${sev}`);
+                  if (count === 0) return;
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setPopoverAnchor((prev) => (prev ? null : rect));
                 }}
               >
                 <SeverityBadge severity={sev} count={count} compact />
@@ -73,6 +77,13 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
           })
         ) : (
           <span style={s.muted}>—</span>
+        )}
+        {popoverAnchor && pr.id && (
+          <FindingsPopover
+            prId={pr.id}
+            anchorRect={popoverAnchor}
+            onClose={() => setPopoverAnchor(null)}
+          />
         )}
       </div>
       <div>
