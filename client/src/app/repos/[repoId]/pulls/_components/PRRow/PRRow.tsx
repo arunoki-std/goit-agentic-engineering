@@ -81,6 +81,8 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
         {popoverAnchor && pr.id && (
           <FindingsPopover
             prId={pr.id}
+            repoId={repoId}
+            prNumber={pr.number}
             anchorRect={popoverAnchor}
             onClose={() => setPopoverAnchor(null)}
           />

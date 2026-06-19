@@ -2,6 +2,7 @@
 
 import React from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { Icon, SEV, ConfidenceNum } from "@devdigest/ui";
 import type { FindingRecord } from "@devdigest/shared";
 import { usePrReviews } from "../../../../../../lib/hooks/reviews";
@@ -10,11 +11,14 @@ const SEV_ORDER: Record<string, number> = { CRITICAL: 0, WARNING: 1, SUGGESTION:
 
 interface FindingsPopoverProps {
   prId: string;
+  repoId: string;
+  prNumber: number;
   anchorRect: DOMRect;
   onClose: () => void;
 }
 
-export function FindingsPopover({ prId, anchorRect, onClose }: FindingsPopoverProps) {
+export function FindingsPopover({ prId, repoId, prNumber, anchorRect, onClose }: FindingsPopoverProps) {
+  const router = useRouter();
   const { data: reviews, isLoading } = usePrReviews(prId);
   const ref = React.useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = React.useState(false);
@@ -102,9 +106,15 @@ export function FindingsPopover({ prId, anchorRect, onClose }: FindingsPopoverPr
           return (
             <div
               key={f.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+                router.push(`/repos/${repoId}/pulls/${prNumber}?tab=findings`);
+              }}
               style={{
                 padding: "11px 16px",
                 borderBottom: i < findings.length - 1 ? "1px solid var(--border)" : "none",
+                cursor: "pointer",
               }}
             >
               {/* Row 1: icon + title + category */}
