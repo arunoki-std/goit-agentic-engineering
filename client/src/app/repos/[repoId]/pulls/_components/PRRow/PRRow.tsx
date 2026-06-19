@@ -58,6 +58,13 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
           {t(`list.status.${st.labelKey}`)}
         </Badge>
       </div>
+      <div style={s.costCell}>
+        {pr.total_cost_usd != null ? (
+          <span className="tnum" style={s.costValue}>${pr.total_cost_usd.toFixed(4)}</span>
+        ) : (
+          <span style={s.muted}>—</span>
+        )}
+      </div>
       <div style={s.updatedCell}>{relativeTime(pr.updated_at)}</div>
     </div>
   );

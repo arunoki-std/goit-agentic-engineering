@@ -197,6 +197,12 @@ export function RunHistory({
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
               {r.ran_at && <span>{new Date(r.ran_at).toLocaleTimeString()}</span>}
+              {settled && (
+                <span className="tnum">
+                  {((r.tokens_in ?? 0) + (r.tokens_out ?? 0)).toLocaleString()} tok
+                  {r.cost_usd != null ? ` · $${r.cost_usd.toFixed(4)}` : ""}
+                </span>
+              )}
             </div>
             <button
               type="button"

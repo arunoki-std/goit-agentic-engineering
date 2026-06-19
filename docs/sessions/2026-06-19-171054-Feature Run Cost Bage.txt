@@ -1,0 +1,944 @@
+▗ ▗   ▖ ▖  Claude Code v2.1.183
+           Sonnet 4.6 · Claude Pro
+  ▘▘ ▝▝    ~/Projects/goit-agentic-engineering/server
+
+
+❯ [Image #1] [Image #2] [Image #3] [Image #4] Зроби, будь ласка, специфікацію і 
+  план реалізації фічі. У списку pull request має бути **cost**. Має бути       
+  покрито три екрани. Перший — це сторінка з *pull request*. там має бути       
+  окрема колонка з **cost**. Друге, на самому запуску агентив ревьюверів біля   
+  часу, коли агент був запущений, має відображатись його ціна. Третье це Agent  
+  Run General Reviewer. Це запуск агентів у сайдбарі, де є Duration, Tokens,    
+  Findings ось там має бути колонка "cost". На зображеннях короткий опис задачі 
+  і дизайн. Якщо щось не зрозуміло, будь ласка, давай запитання.                
+  ⎿  [Image #1]
+  ⎿  [Image #2]
+  ⎿  [Image #3]
+  ⎿  [Image #4]
+
+⏺ Спочатку прочитаю LEARNINGS.md і дослідю кодову базу, щоб скласти точну
+  специфікацію.
+
+  Searched for 1 pattern, read 1 file, listed 1 directory (ctrl+o to expand)
+
+⏺ Explore(Explore codebase for cost/token tracking)
+  ⎿  Done (45 tool uses · 71.2k tokens · 2m 58s)
+  (ctrl+o to expand)
+
+⏺ Дуже детальна розвідка. Тепер перевірю ще кілька деталей для точної
+  специфікації.
+
+  Searched for 4 patterns, read 6 files, listed 1 directory, ran 1 shell command (ctrl+o to expand)
+  ⎿  Loaded server/CLAUDE.md
+
+⏺ Тепер подивлюсь на клієнтські компоненти.
+
+  Searched for 3 patterns, read 5 files, listed 2 directories, ran 4 shell commands (ctrl+o to expand)
+  ⎿  Loaded client/CLAUDE.md
+
+⏺ Тепер маю повну картину. Пишу специфікацію та план.
+
+  Searched for 1 pattern, read 1 file, listed 3 directories (ctrl+o to expand)
+
+⏺ Write(~/Projects/goit-agentic-engineering/specs/run-cost-badge.md)
+  ⎿  Wrote 261 lines to ../specs/run-cost-badge.md
+       1 # Spec: Run Cost Badge
+       3 **Feature:** показуємо вартість (USD) і токени кожного запуску а
+         гента у трьох місцях UI.  
+         ідповідях OpenRouter/OpenAI; вартість = токени × прайс (функція 
+         `estimateCost()` вже існує в `server/src/adapters/llm/pricing.ts
+         рацією `0009` — потрібно повернути.
+       5 
+       7 
+       8 ## Три екрани
+      10 ### Екран 1 — Список PR (`/repos/:id/pulls`)
+     … +287 lines (ctrl+o to expand)
+
+⏺ Специфікацію збережено у specs/run-cost-badge.md. Ось стислий підсумок:
+
+  ---
+  Що виявила розвідка кодової бази
+
+  Гарна новина: уся інфраструктура вже є.
+  - estimateCost() в pricing.ts рахує USD з токенів
+  - ReviewOutcome.costUsd є в reviewer-core
+  - LLM-адаптери (openai.ts, anthropic.ts) вже повертають costUsd
+
+  Проблема: cost_usd було навмисно видалено з agent_runs міграцією
+  0009_complex_runaways.sql і не передається далі по стеку. Тому у БД,
+  API-контрактах і UI — нічого немає.
+
+  ---
+  Що треба зробити (10 серверних + 5 клієнтських змін)
+
+  ┌────────┬──────────┬──────────────────────────────────────────────────────┐
+  │   #    │   Шар    │                          Що                          │
+  ├────────┼──────────┼──────────────────────────────────────────────────────┤
+  │ S1     │ DB       │ Міграція: ALTER TABLE agent_runs ADD COLUMN cost_usd │
+  │        │          │  double precision                                    │
+  ├────────┼──────────┼──────────────────────────────────────────────────────┤
+  │ S2     │ DB       │ Drizzle-схема: doublePrecision('cost_usd') в         │
+  │        │          │ agentRuns                                            │
+  ├────────┼──────────┼──────────────────────────────────────────────────────┤
+  │ S3–S4  │ Server   │ completeAgentRun() + run-executor.ts — зберігати     │
+  │        │          │ costUsd                                              │
+  ├────────┼──────────┼──────────────────────────────────────────────────────┤
+  │ S5–S6  │ Contract │ RunStats.cost_usd + прокинути у трейс                │
+  ├────────┼──────────┼──────────────────────────────────────────────────────┤
+  │ S7–S8  │ Contract │ RunSummary.cost_usd + повернути з listRunsForPull()  │
+  ├────────┼──────────┼──────────────────────────────────────────────────────┤
+  │ S9–S10 │ Contract │ PrMeta.total_cost_usd + SUM() в PR list route        │
+  ├────────┼──────────┼──────────────────────────────────────────────────────┤
+  │ C1     │ Client   │ Синхронізувати vendor/shared (дзеркало сервера)      │
+  ├────────┼──────────┼──────────────────────────────────────────────────────┤
+  │ C2     │ Client   │ Утиліта formatCost(usd) → "$0.0124" або "—"          │
+  ├────────┼──────────┼──────────────────────────────────────────────────────┤
+  │ C3     │ Екран 2  │ RunCostInline у таймлайні: 9,119 tok · $0.0013       │
+  ├────────┼──────────┼──────────────────────────────────────────────────────┤
+  │ C4     │ Екран 1  │ Нова колонка COST у PR list (7-а колонка, сума по    │
+  │        │          │ PR)                                                  │
+  ├────────┼──────────┼──────────────────────────────────────────────────────┤
+  │ C5     │ Екран 3  │ Плитка COST між TOKENS і FINDINGS у RunTraceDrawer   │
+  │        │          │ Stats                                                │
+  └────────┴──────────┴──────────────────────────────────────────────────────┘
+
+  Файли, яких не треба чіпати: reviewer-core/run.ts, pricing.ts, обидва
+  LLM-адаптери, hooks/reviews.ts.
+
+✻ Churned for 6m 57s
+
+❯ Десь попадалась на очі припис "без міграцій"  начебто, дана логіка вже була   
+  реалізована.                                                                  
+
+⏺ Перевірю міграцію 0009 і пошукаю нотатки про підхід без міграцій.
+
+  Searched for 2 patterns, read 1 file (ctrl+o to expand)
+  ⎿  Loaded reviewer-core/CLAUDE.md
+
+⏺ Все зрозуміло. Міграція 0009 навмисно видалила cost_usd з agent_runs — але в
+  таблиці вже є model, tokens_in, tokens_out, і estimateCost() — чиста функція.
+  Вартість можна перераховувати на льоту без зберігання. Це і є "без міграцій".
+
+  Оновлюю специфікацію:
+⏺ Update(~/Projects/goit-agentic-engineering/specs/run-cost-badge.md)
+  ⎿  Added 45 lines, removed 51 lines
+      47  
+      48  Всі дані беруться з `usage` у вже наявній відповіді LLM. Нових 
+          HTTP-запитів не потрібно.
+      49  
+      50 ----                                                            
+      50 +## Чому міграція не потрібна                                   
+      51  
+      52 -## Зміни в сервері                                             
+      52 +`cost_usd` було **навмисно видалено** з `agent_runs` міграцією 
+         +`0009` — тому що воно є похідним полем:                        
+      53  
+      54 -### S1. Міграція БД                                            
+      55 -Файл: `server/src/db/migrations/0010_add_cost_usd_to_agent_runs
+         -.sql`                                                          
+      56 -                                                               
+      57 -```sql                                                         
+      58 -ALTER TABLE "agent_runs" ADD COLUMN "cost_usd" double precision
+         -;                                                              
+      54  ```
+      60 -                                                               
+      61 -### S2. Drizzle-схема                                          
+      62 -Файл: `server/src/db/schema/runs.ts`                           
+      63 -                                                               
+      64 -Додати після `tokensOut`:                                      
+      65 -```ts                                                          
+      66 -costUsd: doublePrecision('cost_usd'),                          
+      55 +cost_usd = estimateCost(model, tokens_in, tokens_out)          
+      56  ```
+      68 -Імпортувати `doublePrecision` з `drizzle-orm/pg-core`.         
+      57  
+      70 -### S3. Репозиторій: `completeAgentRun()`                      
+      71 -Файл: `server/src/modules/reviews/repository/run.repo.ts`      
+      58 +Всі три вхідних поля вже зберігаються в `agent_runs`. `estimate
+         +Cost()` — чиста функція (`pricing.ts`). Вартість перераховуєтьс
+         +я на льоту в шарі репозиторію / маршруту, **без нових колонок і
+         + без міграцій**.                                               
+      59  
+      73 -У тип `values` додати:                                         
+      74 -```ts                                                          
+      75 -costUsd?: number | null;                                       
+      76 -```                                                            
+      77 -У `db.update().set({})` додати:                                
+      78 -```ts                                                          
+      79 -costUsd: values.costUsd ?? null,                               
+      80 -```                                                            
+      60 +---                                                            
+      61  
+      82 -### S4. Run-executor: передати `costUsd`                       
+      83 -Файл: `server/src/modules/reviews/run-executor.ts`             
+      84 -Рядок ~213: `const { tokensIn, tokensOut, grounding } = outcome
+         -;` → розширити:                                                
+      62 +## Зміни в сервері                                             
+      63  
+      86 -```ts                                                          
+      87 -const { tokensIn, tokensOut, costUsd, grounding } = outcome;   
+      88 -```                                                            
+      89 -                                                               
+      90 -У виклик `completeAgentRun()` додати `costUsd`.                
+      91 -                                                               
+      92 -### S5. Контракт `RunStats`                                    
+      64 +### S1. Контракт `RunStats`                                    
+      65  Файл: `server/src/vendor/shared/contracts/trace.ts`
+      66  
+      67  У `RunStats` додати:
+     ...
+       69  cost_usd: z.number().nullable(),
+       70  ```
+       71  
+      100 -### S6. Run-executor: зберегти в трейс                        
+       72 +### S2. Run-executor: обчислити cost і зберегти в трейс       
+       73  Файл: `server/src/modules/reviews/run-executor.ts`  
+      102 -У блок `stats:` (рядок ~264):                                 
+       74 +Рядок ~213: розширити деструктуризацію:                       
+       75  ```ts
+       76 +const { tokensIn, tokensOut, costUsd, grounding } = outcome;  
+       77 +```                                                           
+       78 +                                                              
+       79 +У блок `stats:` (рядок ~264) додати:                          
+       80 +```ts                                                         
+       81  cost_usd: costUsd ?? null,
+       82  ```
+       83  
+      107 -### S7. Контракт `RunSummary`                                 
+       84 +Трейс зберігається як JSONB — нове поле в `stats` з'явиться ав
+          +томатично, без зміни схеми.                                   
+       85 +                                                              
+       86 +### S3. Контракт `RunSummary`                                 
+       87  Файл: `server/src/vendor/shared/contracts/trace.ts`
+       88  
+       89  У `RunSummary` додати:
+     ...
+       91  cost_usd: z.number().nullable(),
+       92  ```
+       93  
+      115 -### S8. Репозиторій: `listRunsForPull()`                      
+      116 -Файл: `server/src/modules/reviews/repository/run.repo.ts`     
+       94 +### S4. Репозиторій: `listRunsForPull()` — обчислити cost     
+       95 +Файл: `server/src/modules/reviews/repository/run.repo.ts`     
+       96 +                                                              
+       97 +Імпортувати `estimateCost`:                                   
+       98 +```ts                                                         
+       99 +import { estimateCost } from '../../../adapters/llm/pricing.js
+          +';                                                            
+      100 +```                                                           
+      101 +                                                              
+      102  У `rows.map()` додати:
+      103  ```ts
+      119 -cost_usd: run.costUsd ?? null,                                
+      104 +cost_usd: estimateCost(run.model ?? '', run.tokensIn ?? 0, run
+          +.tokensOut ?? 0),                                             
+      105  ```
+      106  
+      122 -### S9. Контракт `PrMeta`                                     
+      107 +### S5. Контракт `PrMeta`                                     
+      108  Файл: `server/src/vendor/shared/contracts/platform.ts`  
+      109  У `PrMeta` додати:
+      110  ```ts
+      111  total_cost_usd: z.number().nullable().nullish(),
+      112  ```
+      113  
+      129 -### S10. PR list route: агрегація cost                        
+      114 +### S6. PR list route: сумарна вартість на PR                 
+      115  Файл: `server/src/modules/pulls/routes.ts`
+      116  
+      132 -Після існуючого блоку `latestReviewByPr` (рядок ~119) додати н
+          -овий:                                                         
+      117 +Після існуючого блоку `latestReviewByPr` (рядок ~119) додати: 
+      118  ```ts
+      119  const totalCostByPr = new Map<string, number | null>();
+      120  if (prIds.length > 0) {
+      136 -  const costRows = await container.db                         
+      121 +  const runRows = await container.db                          
+      122      .select({
+      123        prId: t.agentRuns.prId,
+      139 -      totalCost: sql<number>`SUM(${t.agentRuns.costUsd})`,    
+      124 +      model: t.agentRuns.model,                               
+      125 +      tokensIn: t.agentRuns.tokensIn,                         
+      126 +      tokensOut: t.agentRuns.tokensOut,                       
+      127      })
+      128      .from(t.agentRuns)
+      142 -    .where(inArray(t.agentRuns.prId, prIds))                  
+      143 -    .groupBy(t.agentRuns.prId);                               
+      144 -  for (const cr of costRows) {                                
+      145 -    if (cr.prId) totalCostByPr.set(cr.prId, cr.totalCost ?? nu
+          -ll);                                                          
+      129 +    .where(and(inArray(t.agentRuns.prId, prIds), eq(t.agentRun
+          +s.status, 'done')));                                          
+      130 +                                                              
+      131 +  for (const rr of runRows) {                                 
+      132 +    if (!rr.prId) continue;                                   
+      133 +    const c = estimateCost(rr.model ?? '', rr.tokensIn ?? 0, r
+          +r.tokensOut ?? 0);                                            
+      134 +    const prev = totalCostByPr.get(rr.prId);                  
+      135 +    // null + anything = null (unknown price poisons the sum) 
+      136 +    totalCostByPr.set(rr.prId, prev === undefined ? c : (prev 
+          +== null || c == null ? null : prev + c));                     
+      137    }
+      138  }
+      139  ```
+      140  
+      150 -У `rows.map()` повернути `total_cost_usd: totalCostByPr.get(r.
+          -id) ?? null`.                                                 
+      141 +Імпортувати `estimateCost` в routes.ts. У `rows.map()` поверну
+          +ти:                                                           
+      142 +```ts                                                         
+      143 +total_cost_usd: totalCostByPr.get(r.id) ?? null,              
+      144 +```                                                           
+      145  
+      146  ---
+      147  
+
+⏺ Update(~/Projects/goit-agentic-engineering/specs/run-cost-badge.md)
+  ⎿  Added 3 lines, removed 5 lines
+      224  ## Порядок реалізації (рекомендований)
+      225  
+      226  ```
+      227 -S1 → S2              # міграція + схема (одне git-комміт)     
+      228 -S3 → S4              # repo + executor (зберігаємо cost у БД) 
+      229 -S5 → S6              # RunStats у трейсі                      
+      230 -S7 → S8              # RunSummary у API                       
+      231 -S9 → S10             # PrMeta + PR list route                 
+      227 +S1 → S2              # RunStats контракт + run-executor (cost 
+          +у трейс)                                                      
+      228 +S3 → S4              # RunSummary контракт + listRunsForPull (
+          +обчислення)                                                   
+      229 +S5 → S6              # PrMeta контракт + PR list route (агрега
+          +ція)                                                          
+      230  C1                   # sync vendor/shared у клієнті
+      231  C2                   # утиліта formatCost
+      232  C3 → Екран 2         # inline cost у RunHistory
+
+⏺ Update(~/Projects/goit-agentic-engineering/specs/run-cost-badge.md)
+  ⎿  Added 1 line, removed 1 line
+      238  
+      239  ## Межові випадки
+      240  
+      241 -- **Seeded дані** — `db:seed` не задає cost; після міграції вс
+          -і старі рядки матимуть `cost_usd = NULL`. Це нормально — відоб
+          -ражатиметься `—`.                                             
+      241 +- **Seeded / старі дані** — `model`, `tokens_in`, `tokens_out`
+          + вже збережені для існуючих рядків. `estimateCost()` одразу по
+          +верне правильне значення без будь-яких backfill-ів.           
+      242  - **Невідома модель** — `estimateCost()` повертає `null`; це з
+           берігається як `NULL` у БД і рендериться як `—`.
+      243  - **Failed/cancelled runs** — `completeAgentRun()` викликаєтьс
+           я з `costUsd` і для таких статусів; бажано зберігати `null` (ч
+           асткова вартість спотворює картину), але передавати `outcome.c
+           ostUsd` якщо він є — прийнятне рішення (узгодити при реалізаці
+           ї).
+      244  - **`sql` helper** — `drizzle-orm` потребує `sql` з `drizzle-o
+           rm` для `SUM()` у PR route; переконатись у імпорті.
+
+⏺ Update(~/Projects/goit-agentic-engineering/specs/run-cost-badge.md)
+  ⎿  Added 3 lines
+      247  
+      248  ## Файли, яких НЕ потрібно чіпати
+      249  
+      250 +- `server/src/db/migrations/` — жодних нових файлів           
+      251 +- `server/src/db/schema/runs.ts` — схема не змінюється        
+      252 +- `server/src/modules/reviews/repository/run.repo.ts` → `compl
+          +eteAgentRun()` — не потребує `costUsd` аргументу              
+      253  - `reviewer-core/src/review/run.ts` — `ReviewOutcome.costUsd` 
+           вже є
+      254  - `server/src/adapters/llm/pricing.ts` — `estimateCost()` вже 
+           є
+      255  - `server/src/adapters/llm/openai.ts`, `anthropic.ts` — вже по
+           вертають `costUsd`
+
+⏺ Специфікацію оновлено. Ось суть зміни:
+
+  0009_complex_runaways.sql навмисно видалила cost_usd — бо це похідне поле. В
+  agent_runs вже є model + tokens_in + tokens_out, і estimateCost() — чиста
+  функція без сайд-ефектів.
+
+  Оновлений план (6 серверних замість 10):
+
+  ┌───────┬────────────────────────────┬────────────────────────────────────┐
+  │   #   │            Файл            │                 Що                 │
+  ├───────┼────────────────────────────┼────────────────────────────────────┤
+  │       │ contracts/trace.ts +       │ Додати cost_usd до RunStats;       │
+  │ S1–S2 │ run-executor.ts            │ обчислити з outcome.costUsd і      │
+  │       │                            │ зберегти в JSONB-трейс             │
+  ├───────┼────────────────────────────┼────────────────────────────────────┤
+  │       │ contracts/trace.ts +       │ Додати cost_usd до RunSummary;     │
+  │ S3–S4 │ run.repo.ts                │ обчислити через estimateCost() у   │
+  │       │                            │ listRunsForPull()                  │
+  ├───────┼────────────────────────────┼────────────────────────────────────┤
+  │ S5–S6 │ contracts/platform.ts +    │ total_cost_usd у PrMeta; агрегація │
+  │       │ pulls/routes.ts            │  по PR в JS через estimateCost()   │
+  └───────┴────────────────────────────┴────────────────────────────────────┘
+
+  Жодних нових міграцій, жодних змін у схемі — тільки контракти + обчислення
+  там, де дані вже є.
+
+✻ Brewed for 2m 0s
+
+❯ + Реализуй фичу.                                                              
+
+⏺ Починаю реалізацію. Спочатку прочитаю всі файли, які потрібно змінити.
+
+  Read 4 files (ctrl+o to expand)
+
+⏺ Маю всю потрібну інформацію. Реалізую послідовно.
+
+  S1–S3: Контракти RunStats, RunSummary, PrMeta
+
+⏺ Update(src/vendor/shared/contracts/trace.ts)
+  ⎿  Added 1 line
+      62    duration_ms: z.number().int(),
+      63    tokens_in: z.number().int(),
+      64    tokens_out: z.number().int(),
+      65 +  cost_usd: z.number().nullable(),                             
+      66    findings: z.number().int(),
+      67    grounding: z.string(),
+      68  });
+
+⏺ Update(src/vendor/shared/contracts/trace.ts)
+  ⎿  Added 1 line
+      103    duration_ms: z.number().int().nullable(),
+      104    tokens_in: z.number().int().nullable(),
+      105    tokens_out: z.number().int().nullable(),
+      106 +  cost_usd: z.number().nullable(),                            
+      107    findings_count: z.number().int().nullable(),
+      108    grounding: z.string().nullable(),
+      109    ran_at: z.string().nullable(),
+
+⏺ Update(src/vendor/shared/contracts/platform.ts)
+  ⎿  Added 2 lines
+      170    updated_at: z.string().nullish(),
+      171    // Latest-review score (list endpoint only; null/absent unti
+           l reviewed).
+      172    score: z.number().int().nullish(),
+      173 +  // Total cost of all agent runs for this PR (computed from t
+          +okens × price).                                               
+      174 +  total_cost_usd: z.number().nullable().nullish(),            
+      175  });
+      176  export type PrMeta = z.infer<typeof PrMeta>;
+      177  
+
+⏺ S2: run-executor.ts — додати cost_usd до трейсу
+
+⏺ Update(src/modules/reviews/run-executor.ts)
+  ⎿  Added 1 line, removed 1 line
+      210            if (this.container.runBus.isCancelled(runId)) throw 
+           new RunCancelledError();
+      211          },
+      212        });
+      213 -      const { tokensIn, tokensOut, grounding } = outcome;     
+      213 +      const { tokensIn, tokensOut, costUsd, grounding } = outc
+          +ome;                                                          
+      214  
+      215        const keptFindings = outcome.review.findings;
+      216  
+
+⏺ Update(src/modules/reviews/run-executor.ts)
+  ⎿  Added 1 line
+      265            duration_ms: durationMs,
+      266            tokens_in: tokensIn,
+      267            tokens_out: tokensOut,
+      268 +          cost_usd: costUsd ?? null,                          
+      269            findings: findingRows.length,
+      270            grounding,
+      271          },
+
+⏺ S4: run.repo.ts — обчислити cost_usd через estimateCost
+
+⏺ Update(src/modules/reviews/repository/run.repo.ts)
+  ⎿  Added 1 line
+      2  import type { Db } from '../../../db/client.js';
+      3  import * as t from '../../../db/schema.js';
+      4  import type { RunSummary, RunTrace } from '@devdigest/shared';
+      5 +import { estimateCost } from '../../../adapters/llm/pricing.js';
+      6  
+      7  // ---- in-flight / history ------------------------------------
+         --------------
+      8  
+
+⏺ Update(src/modules/reviews/repository/run.repo.ts)
+  ⎿  Added 1 line
+      60      duration_ms: run.durationMs,
+      61      tokens_in: run.tokensIn,
+      62      tokens_out: run.tokensOut,
+      63 +    cost_usd: estimateCost(run.model ?? '', run.tokensIn ?? 0, 
+         +run.tokensOut ?? 0),                                           
+      64      findings_count: run.findingsCount,
+      65      grounding: run.grounding,
+      66      ran_at: run.ranAt ? run.ranAt.toISOString() : null,
+
+⏺ S5–S6: pulls/routes.ts — агрегація total_cost_usd на PR
+
+⏺ Update(src/modules/pulls/routes.ts)
+  ⎿  Added 1 line
+      1  import type { FastifyInstance } from 'fastify';
+      2  import type { ZodTypeProvider } from 'fastify-type-provider-zod'
+         ;
+      3  import { and, desc, eq, inArray } from 'drizzle-orm';
+      4 +import { estimateCost } from '../../adapters/llm/pricing.js';   
+      5  import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } 
+         from '@devdigest/shared';
+      6  import { PrCommentInput } from '@devdigest/shared';
+      7  import * as t from '../../db/schema.js';
+
+⏺ Update(src/modules/pulls/routes.ts)
+  ⎿  Added 21 lines
+      130        }
+      131      }
+      132  
+      133 +    const totalCostByPr = new Map<string, number | null>();   
+      134 +    if (prIds.length > 0) {                                   
+      135 +      const runRows = await container.db                      
+      136 +        .select({                                             
+      137 +          prId: t.agentRuns.prId,                             
+      138 +          model: t.agentRuns.model,                           
+      139 +          tokensIn: t.agentRuns.tokensIn,                     
+      140 +          tokensOut: t.agentRuns.tokensOut,                   
+      141 +        })                                                    
+      142 +        .from(t.agentRuns)                                    
+      143 +        .where(and(inArray(t.agentRuns.prId, prIds), eq(t.agen
+          +tRuns.status, 'done')));                                      
+      144 +                                                              
+      145 +      for (const rr of runRows) {                             
+      146 +        if (!rr.prId) continue;                               
+      147 +        const c = estimateCost(rr.model ?? '', rr.tokensIn ?? 
+          +0, rr.tokensOut ?? 0);                                        
+      148 +        const prev = totalCostByPr.get(rr.prId);              
+      149 +        // If any run has an unknown model (c === null), the t
+          +otal becomes null.                                            
+      150 +        totalCostByPr.set(rr.prId, prev === undefined ? c : pr
+          +ev == null || c == null ? null : prev + c);                   
+      151 +      }                                                       
+      152 +    }                                                         
+      153 +                                                              
+      154      const now = Date.now();
+      155      return rows.map((r) => {
+      156        const review = latestReviewByPr.get(r.id);
+
+⏺ Update(src/modules/pulls/routes.ts)
+  ⎿  Added 1 line
+      175          opened_at: r.openedAt?.toISOString() ?? null,
+      176          updated_at: r.updatedAt?.toISOString() ?? null,
+      177          score: review ? review.score : null,
+      178 +        total_cost_usd: totalCostByPr.get(r.id) ?? null,      
+      179        };
+      180      });
+      181    });
+
+⏺ Серверна частина готова. Тепер клієнт — спочатку синхронізую vendor/shared.
+
+  C1: Синхронізація vendor/shared у клієнті
+
+  Read 2 files, ran 2 shell commands (ctrl+o to expand)
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/vendor/shared/contracts/
+        trace.ts)
+  ⎿  Added 1 line
+      61    duration_ms: z.number().int(),
+      62    tokens_in: z.number().int(),
+      63    tokens_out: z.number().int(),
+      64 +  cost_usd: z.number().nullable(),                             
+      65    findings: z.number().int(),
+      66    grounding: z.string(),
+      67  });
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/vendor/shared/contracts/
+        trace.ts)
+  ⎿  Added 1 line
+      102    duration_ms: z.number().int().nullable(),
+      103    tokens_in: z.number().int().nullable(),
+      104    tokens_out: z.number().int().nullable(),
+      105 +  cost_usd: z.number().nullable(),                            
+      106    findings_count: z.number().int().nullable(),
+      107    grounding: z.string().nullable(),
+      108    ran_at: z.string().nullable(),
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/vendor/shared/contracts/
+        platform.ts)
+  ⎿  Added 2 lines
+      170    updated_at: z.string().nullish(),
+      171    // Latest-review score (list endpoint only; null/absent unti
+           l reviewed).
+      172    score: z.number().int().nullish(),
+      173 +  // Total cost of all agent runs for this PR (computed from t
+          +okens × price).                                               
+      174 +  total_cost_usd: z.number().nullable().nullish(),            
+      175  });
+      176  export type PrMeta = z.infer<typeof PrMeta>;
+      177  
+
+⏺ C2: Утиліта formatCost у helpers
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/app/repos/[repoId]/pulls
+        /[number]/_components/RunTraceDrawer/helpers.ts)
+  ⎿  File must be read first
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/app/repos/[repoId]/pulls
+        /[number]/_components/RunTraceDrawer/helpers.ts)
+  ⎿  Added 6 lines
+      26  export function formatTokens(tokensIn: number, tokensOut: numbe
+          r): string {
+      27    return `${(tokensIn / 1000).toFixed(0)}k→${(tokensOut / 1000)
+          .toFixed(1)}k`;
+      28  }
+      29 +                                                               
+      30 +/** Compact USD cost display. null → "—" (unknown price is diff
+         +erent from zero cost). */                                      
+      31 +export function formatCost(usd: number | null | undefined): str
+         +ing {                                                          
+      32 +  if (usd == null) return '—';                                 
+      33 +  return `$${usd.toFixed(4)}`;                                 
+      34 +}                                                              
+
+⏺ C3 (Екран 3): Плитка COST у TraceBody Stats
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/app/repos/[repoId]/pulls
+        /[number]/_components/RunTraceDrawer/_components/TraceBody/TraceBody.tsx
+        )
+  ⎿  Added 1 line, removed 1 line
+       7  import { Badge } from "@devdigest/ui";
+       8  import type { RunTrace, FindingRecord } from "@devdigest/shared
+          ";
+       9  import { PROMPT_COLORS } from "../../constants";
+      10 -import { formatSeconds, formatTokens } from "../../helpers";   
+      10 +import { formatSeconds, formatTokens, formatCost } from "../../
+         +helpers";                                                      
+      11  import { s } from "../../styles";
+      12  import { TraceSection } from "../TraceSection";
+      13  import { ToolCallRow } from "../ToolCallRow";
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/app/repos/[repoId]/pulls
+        /[number]/_components/RunTraceDrawer/_components/TraceBody/TraceBody.tsx
+        )
+  ⎿  Added 1 line
+      63          <div style={s.statsRow}>
+      64            <Stat label={t("trace.stat.duration")} val={formatSec
+          onds(stats.duration_ms)} />
+      65            <Stat label={t("trace.stat.tokens")} val={formatToken
+          s(stats.tokens_in, stats.tokens_out)} />
+      66 +          <Stat label={t("trace.stat.cost")} val={formatCost(st
+         +ats.cost_usd)} />                                              
+      67            <Stat label={t("trace.stat.findings")} val={stats.fin
+          dings} />
+      68          </div>
+      69        </TraceSection>
+
+⏺ C3 (Екран 2): Токени + вартість у таймлайні RunHistory
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/app/repos/[repoId]/pulls
+        /[number]/_components/RunHistory/RunHistory.tsx)
+  ⎿  Added 6 lines
+      197              </div>
+      198              <div style={{ display: "flex", flexDirection: "col
+           umn", alignItems: "flex-end", gap: 2, fontSize: 11, color: "va
+           r(--text-muted)", flexShrink: 0 }}>
+      199                {r.ran_at && <span>{new Date(r.ran_at).toLocaleT
+           imeString()}</span>}
+      200 +              {settled && (                                   
+      201 +                <span className="tnum">                       
+      202 +                  {((r.tokens_in ?? 0) + (r.tokens_out ?? 0)).
+          +toLocaleString()} tok                                         
+      203 +                  {r.cost_usd != null ? ` · $${r.cost_usd.toFi
+          +xed(4)}` : ""}                                                
+      204 +                </span>                                       
+      205 +              )}                                              
+      206              </div>
+      207              <button
+      208                type="button"
+
+⏺ C4 (Екран 1): COST колонка у списку PR
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/app/repos/[repoId]/pulls
+        /constants.ts)
+  ⎿  Added 1 line, removed 1 line
+      24  };
+      25  
+      26  /** Grid template for both the header row and PR rows. */
+      27 -export const GRID = "1fr 132px 92px 60px 118px 78px";          
+      27 +export const GRID = "1fr 132px 92px 60px 118px 72px 78px";     
+      28  
+      29  /** Line-count thresholds for the S/M/L size bucket. */
+      30  export const SIZE_SMALL_MAX = 100;
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/app/repos/[repoId]/pulls
+        /constants.ts)
+  ⎿  Added 1 line
+      45    "size",
+      46    "score",
+      47    "status",
+      48 +  "cost",                                                      
+      49    "updated",
+      50  ];
+      51  
+
+⏺ Тепер додам клітинку cost у PRRow.tsx:
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/app/repos/[repoId]/pulls
+        /_components/PRRow/PRRow.tsx)
+  ⎿  Added 7 lines
+      58            {t(`list.status.${st.labelKey}`)}
+      59          </Badge>
+      60        </div>
+      61 +      <div style={s.costCell}>                                 
+      62 +        {pr.total_cost_usd != null ? (                         
+      63 +          <span className="tnum" style={s.costValue}>${pr.total
+         +_cost_usd.toFixed(4)}</span>                                   
+      64 +        ) : (                                                  
+      65 +          <span style={s.muted}>—</span>                       
+      66 +        )}                                                     
+      67 +      </div>                                                   
+      68        <div style={s.updatedCell}>{relativeTime(pr.updated_at)}<
+          /div>
+      69      </div>
+      70    );
+
+⏺ Тепер стилі для costCell:
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/app/repos/[repoId]/pulls
+        /styles.ts)
+  ⎿  Added 8 lines
+      45      color: "var(--text-muted)",
+      46      textAlign: "right",
+      47    } satisfies CSSProperties,
+      48 +  costCell: {                                                  
+      49 +    fontSize: 12,                                              
+      50 +    color: "var(--text-muted)",                                
+      51 +  } satisfies CSSProperties,                                   
+      52 +  costValue: {                                                 
+      53 +    color: "var(--text-secondary)",                            
+      54 +    fontVariantNumeric: "tabular-nums",                        
+      55 +  } satisfies CSSProperties,                                   
+      56    muted: { color: "var(--text-muted)" } satisfies CSSProperties
+          ,
+      57    filterBar: {
+      58      display: "flex",
+
+⏺ i18n — додати переклади
+
+  Read 2 files (ctrl+o to expand)
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/messages/en/prReview.json)
+  ⎿  Added 1 line
+      92        "size": "Size",
+      93        "score": "Score",
+      94        "status": "Status",
+      95 +      "cost": "Cost",                                          
+      96        "updated": "Updated"
+      97      },
+      98      "filesCount": "{count} files",
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/messages/en/runs.json)
+  ⎿  Added 1 line
+      39      "stat": {
+      40        "duration": "DURATION",
+      41        "tokens": "TOKENS",
+      42 +      "cost": "COST",                                          
+      43        "findings": "FINDINGS"
+      44      },
+      45      "prompt": {
+⏺ Тепер запущу typecheck на обох пакетах:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Є ще одне місце в run-executor.ts де будується RunStats. Знайду його:
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(src/modules/reviews/run-executor.ts)
+  ⎿  Added 1 line, removed 1 line
+      422          pr: pull.number,
+      423          source: 'local',
+      424        },
+      425 -      stats: { duration_ms: durationMs, tokens_in: 0, tokens_o
+          -ut: 0, findings: 0, grounding },                              
+      425 +      stats: { duration_ms: durationMs, tokens_in: 0, tokens_o
+          +ut: 0, cost_usd: null, findings: 0, grounding },              
+      426        prompt_assembly: { system: agent.systemPrompt, skills: n
+           ull, memory: null, specs: null, user: '' },
+      427        tool_calls: [],
+      428        raw_output: '',
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Сервер проходить. Тепер клієнт:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Треба виправити тести — вони використовують старі фікстури без cost_usd.
+  Подивлюся на обидва:
+
+  Read 2 files (ctrl+o to expand)
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/app/repos/[repoId]/pulls
+        /[number]/_components/RunHistory/RunHistory.test.tsx)
+  ⎿  Added 1 line
+      25      duration_ms: 1000,
+      26      tokens_in: 100,
+      27      tokens_out: 50,
+      28 +    cost_usd: null,                                            
+      29      findings_count: 0,
+      30      grounding: "0/0 passed",
+      31      ran_at: "2026-06-11T18:44:34.000Z",
+
+⏺ Update(~/Projects/goit-agentic-engineering/client/src/app/repos/[repoId]/pulls
+        /[number]/_components/RunTraceDrawer/RunTraceDrawer.test.tsx)
+  ⎿  Added 1 line, removed 1 line
+       7  // Mock the trace hooks so the drawer renders without a query c
+          lient / SSE.
+       8  const TRACE: RunTrace = {
+       9    config: { agent: "Security", version: "1", provider: "openai"
+          , model: "gpt-4.1", pr: 482, source: "local" },
+      10 -  stats: { duration_ms: 8200, tokens_in: 12000, tokens_out: 150
+         -0, findings: 2, grounding: "2/2 passed" },                     
+      10 +  stats: { duration_ms: 8200, tokens_in: 12000, tokens_out: 150
+         +0, cost_usd: null, findings: 2, grounding: "2/2 passed" },     
+      11    prompt_assembly: { system: "You are a reviewer.", skills: "##
+          # skill", memory: null, specs: null, user: "Review PR #482" },
+      12    tool_calls: [{ tool: "review_file", args: "src/config.ts", me
+          ta: "single-pass", ms: 1200 }],
+      13    raw_output: '{"verdict":"request_changes"}',
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Обидва typechecks чисті. Запущу тести:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Ще один тест-файл з фікстурою. Виправлю:
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ Update(test/contracts.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      157    it('RunTrace (data2.jsx TRACE single-document)', () => {
+      158      const trace = RunTrace.parse({
+      159        config: { agent: 'Security Reviewer', version: 'v7', mod
+           el: 'gpt-4.1', pr: 482, source: 'local' },
+      160 -      stats: { duration_ms: 8200, tokens_in: 14820, tokens_out
+          -: 1240, findings: 3, grounding: '3/3 passed' },               
+      160 +      stats: { duration_ms: 8200, tokens_in: 14820, tokens_out
+          +: 1240, cost_usd: null, findings: 3, grounding: '3/3 passed' }
+          +,                                                             
+      161        prompt_assembly: { system: 's', user: 'u' },
+      162        tool_calls: [{ tool: 'read_file', args: "'src/config.ts'
+           ", meta: '1,240 bytes', ms: 120 }],
+      163        raw_output: '{}',
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Всі 22 тест-файли пройшли. Резюме того, що зроблено:
+
+  ---
+  Серверні зміни (без міграцій):
+  - contracts/trace.ts — cost_usd додано до RunStats і RunSummary
+  - contracts/platform.ts — total_cost_usd додано до PrMeta
+  - run-executor.ts — costUsd береться з outcome і записується в JSONB-трейс
+  (обидва місця)
+  - run.repo.ts — listRunsForPull() обчислює cost_usd через estimateCost() на
+  льоту
+  - pulls/routes.ts — агрегує total_cost_usd на PR через JS-цикл по agent_runs
+
+  Клієнтські зміни (3 екрани):
+  - Екран 1 (PR list) — нова колонка COST: GRID розширено, COLUMN_KEYS оновлено,
+  PRRow + styles.ts + i18n
+  - Екран 2 (RunHistory таймлайн) — рядок {total} tok · $0.0013 поряд з часом
+  завершеного запуску
+  - Екран 3 (RunTraceDrawer Stats) — плитка COST між TOKENS і FINDINGS
+
+  Утиліта: formatCost(usd) → $0.0124 або — (null ≠ $0.00)
+
+✻ Churned for 5m 24s
+
+※ recap: Implemented the Run Cost Badge feature — cost now appears in the PR list, run timeline, and agent run stats drawer, all computed on-the-fly from stored tokens without migrations. All 129 server and 21 client tests pass. (disable recaps in /config)
+
+❯ The PR correctly implements the cost display feature across three UI surfaces 
+  and the server-side computation. However, there is one critical correctness   
+  defect: the `totalCostByPr` aggregation in the PR list route uses `prev ===   
+  undefined` as the initial-condition check, which means a PR whose first run   
+  has a known cost (non-null) will be set correctly, but if the first run has   
+  an unknown model (cost is null), the total becomes null and subsequent runs   
+  with known costs will never override it because `prev == null` short-circuits 
+  to null. This violates the spec's rule that "unknown price poisons the sum"   
+  — but the spec also says a PR with *any* unknown model should show `—`, so    
+  the logic is actually correct per spec. The real critical issue is that the   
+  `totalCostByPr` map is initialized with `undefined` for absent keys, and the  
+  code uses `prev === undefined` to detect the first run. This works, but the   
+  subsequent logic `prev == null || c == null ? null : prev + c` means that if  
+  the *first* run for a PR has a known cost (e.g., $0.01), and a *later* run    
+  has an unknown model (c === null), the total becomes null — which is correct  
+  per spec. However, if the first run has an unknown model (c === null), `prev` 
+  is `undefined`, so `prev === undefined` is true, and the map is set to `c`    
+  which is `null`. Then for a second run with a known cost, `prev` is `null`,   
+  and `prev == null` is true, so the total stays `null`. This is correct per    
+  spec. So the logic is actually correct. The critical issue is elsewhere: the  
+  `estimateCost` function is called with `rr.model ?? ''` — if `model` is       
+  `null` or empty string, `estimateCost` will likely return `null` (unknown     
+  model), which is fine. But the real critical bug is that the `totalCostByPr`  
+  map is computed *after* the `latestReviewByPr` map, but the `rows.map()` that 
+  uses `totalCostByPr` is the same `rows.map()` that also uses                  
+  `latestReviewByPr`. The `totalCostByPr` map is correctly populated before the 
+  `rows.map()`. No issue there. The actual critical defect is that the          
+  `totalCostByPr` map uses `prev === undefined` to detect the first run, but    
+  `Map.get()` returns `undefined` for missing keys. However, `null` is a valid  
+  stored value (for unknown model). So if a PR's first run has an unknown       
+  model, `prev` is `undefined`, the condition `prev === undefined` is true, and 
+  the map is set to `c` which is `null`. Then for a second run with a known     
+  cost, `prev` is `null`, and `prev == null` is true, so the total stays        
+  `null`. This is correct per spec. The logic is actually correct. The critical 
+  issue is that the code does not handle the case where `estimateCost` returns  
+  `null` for a run with a known model — but that's a pricing.ts issue, not      
+  this PR. The actual critical defect is that the `totalCostByPr` map is        
+  computed using `rr.model ?? ''` — if `model` is `null`, `estimateCost` is     
+  called with empty string, which will likely return `null`. But the spec says  
+  unknown model should result in `null` cost. This is fine. The real critical   
+  issue is that the `totalCostByPr` map is not scoped to the workspace — it     
+  aggregates across all PRs in the list, but the PR list is already scoped to a 
+  repo via the route's `repoId` parameter. The `agentRuns` table has a `prId`   
+  column that references the PRs table, which is scoped to a repo. So the query 
+  `inArray(t.agentRuns.prId, prIds)` correctly limits to the PRs in the         
+  current repo. No issue. The actual critical defect is that the                
+  `totalCostByPr` map uses `prev === undefined` to detect the first run, but    
+  `Map.get()` returns `undefined` for missing keys. However, `null` is a valid  
+  stored value. If a PR's first run has an unknown model, `prev` is             
+  `undefined`, the condition `prev === undefined` is true, and the map is set   
+  to `c` which is `null`. Then for a second run with a known cost, `prev` is    
+  `null`, and `prev == null` is true, so the total stays `null`. This is        
+  correct per spec. The logic is actually correct. I cannot find a critical     
+  defect. The code is correct.                                                  
+
+⏺ Дякую за рев'ю. Рев'юер правильно дійшов висновку — логіка коректна. Ось чому:
+
+  // prev === undefined → перший запуск для цього PR → ставимо c (навіть якщо 
+  null)
+  // prev == null      → попередній результат уже "отруєний" → залишаємо null
+  // інакше            → додаємо
+  totalCostByPr.set(rr.prId, prev === undefined ? c : prev == null || c == null
+  ? null : prev + c);
+
+  Три граничних випадки, які рев'юер перевірив:
+
+  ┌────────────────────────┬───────────┬───────────────────┐
+  │ Послідовність запусків │ Результат │ Відповідає спеку? │
+  ├────────────────────────┼───────────┼───────────────────┤
+  │ Відомий → Відомий      │ сума      │ ✓                 │
+  ├────────────────────────┼───────────┼───────────────────┤
+  │ Відомий → Невідомий    │ null      │ ✓ (null отруює)   │
+  ├────────────────────────┼───────────┼───────────────────┤
+  │ Невідомий → Відомий    │ null      │ ✓ (null отруює)   │
+  └────────────────────────┴───────────┴───────────────────┘
+
+  Відмінність === undefined (відсутній ключ в Map) від == null (збережений null
+  для невідомої моделі) — навмисна і потрібна саме для того, щоб null не
+  трактувався як "ще не бачили цей PR".
+
+  Імплементація відповідає спеку. Дефектів нема.
+
+✻ Cogitated for 26s
