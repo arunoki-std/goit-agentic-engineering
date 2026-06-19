@@ -1,6 +1,29 @@
 import type { CSSProperties } from "react";
 
 export const s = {
+  severityFilterBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 14,
+  } satisfies CSSProperties,
+  severityFilterBtn: (active: boolean): CSSProperties => ({
+    background: "none",
+    border: active ? "2px solid currentColor" : "2px solid transparent",
+    borderRadius: 7,
+    padding: 0,
+    cursor: "pointer",
+    outline: "none",
+    display: "inline-flex",
+    opacity: 1,
+    transition: "border-color .1s",
+  }),
+  severityFilterLabel: {
+    fontSize: 12,
+    color: "var(--text-muted)",
+    marginRight: 4,
+    flexShrink: 0,
+  } satisfies CSSProperties,
   reviewInProgress: {
     marginBottom: 18,
     display: "flex",

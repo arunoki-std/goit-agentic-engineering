@@ -1,0 +1,860 @@
+▗ ▗   ▖ ▖  Claude Code v2.1.183
+           Sonnet 4.6 · Claude Pro
+  ▘▘ ▝▝    ~/Projects/goit-agentic-engineering/client
+
+
+❯ /clear                                                                        
+
+❯  фіча через 5 фаз: знахідки за критичністю (findings). Додайте на сторінку PR 
+  лічильники знахідок за severity: «3 CRITICAL · 5 WARNING · 2 SUGGESTION»,     
+  клік по рівню — показані лише його знахідки. [Image #5] [Image #6] перед      
+  виконанням узгодь план дій і зроби специфікацію.                              
+  ⎿  [Image #5]
+  ⎿  [Image #6]
+
+⏺ I'll start by reading LEARNINGS.md as required by the session protocol, then
+  explore the codebase to write a solid spec before touching any code.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ LEARNINGS.md is mostly empty — no prior notes to surface. Now let me explore
+  the relevant parts of the codebase.
+
+⏺ Explore(Explore PR findings feature codebase)
+  ⎿  Done (33 tool uses · 46.2k tokens · 2m 9s)
+  (ctrl+o to expand)
+
+⏺ Good — LEARNINGS.md is empty, nothing to surface. Now I have a clear picture
+  of the codebase. Let me write the spec for your approval.
+
+  ---
+  Specification: Findings Severity Counters
+
+  What we're building
+
+  Two connected changes:
+  1. PR list row — the FINDINGS column shows ⊘2 ⚠2 ♢2 per-severity counters
+  (already mocked in the design; needs server data + rendering).
+  2. PR detail page — a severity filter bar shows 3 CRITICAL · 5 WARNING · 2 
+  SUGGESTION; clicking a level filters the findings list to that severity only;
+  clicking again deselects.
+
+  ---
+  Phase 1 — Server: expose per-severity counts on PrMeta
+
+  server/src/repos/[id]/pulls list endpoint currently returns only score from
+  the latest review. We need to add:
+
+  findings_summary: { CRITICAL: number; WARNING: number; SUGGESTION: number }
+
+  Computed from the latest review's findings (same join that produces score),
+  grouped by severity. Added to PrMeta in the shared contract.
+
+  ---
+  Phase 2 — Shared contract update
+
+  server/src/vendor/shared/contracts/review-api.ts (and its client mirror):
+  - Add findings_summary field to PrMeta schema (Zod + TypeScript type).
+
+  ---
+  Phase 3 — PR list UI: FINDINGS column
+
+  client/src/app/repos/[repoId]/pulls/_components/PRRow/PRRow.tsx
+
+  - Add a findings column to the grid (update constants.ts grid template and
+  column list).
+  - Render three <SeverityBadge severity="CRITICAL" count={n} compact /> badges
+  side-by-side.
+  - Zero-count badges are rendered dimmed (opacity), not hidden — keeps layout
+  stable.
+  - Clicking a badge navigates to the PR detail page with ?severity=CRITICAL
+  query param pre-applied.
+
+  ---
+  Phase 4 — PR detail: severity filter bar
+
+  client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsTab/FindingsT
+  ab.tsx
+
+  - Read searchParams.severity on mount; initialize local filter state from it.
+  - Compute aggregate counts by summing across all non-dismissed findings in all
+  review runs.
+  - Render a filter bar above the timeline: three clickable <SeverityBadge>
+  buttons. Active severity gets a highlight ring; clicking active deselects
+  (back to "all").
+
+  ---
+  Phase 5 — FindingsPanel filtering
+
+  client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/Finding
+  sPanel.tsx (or equivalent)
+
+  - Accept an optional filterSeverity?: Severity prop.
+  - When set, hide FindingCard items whose severity !== filterSeverity.
+  - When no findings match, show an empty state: "No [CRITICAL] findings in this
+  run."
+
+  ---
+  Files touched
+
+  ┌──────────────────────────────────────────────────────────┬──────────────┐
+  │                           File                           │    Change    │
+  ├──────────────────────────────────────────────────────────┼──────────────┤
+  │                                                          │ Add findings │
+  │ server/src/repos/pulls/routes.ts                         │ _summary to  │
+  │                                                          │ list query   │
+  ├──────────────────────────────────────────────────────────┼──────────────┤
+  │ server/src/vendor/shared/contracts/review-api.ts         │ Add field to │
+  │                                                          │  PrMeta      │
+  ├──────────────────────────────────────────────────────────┼──────────────┤
+  │ client/src/vendor/shared/contracts/review-api.ts         │ Mirror same  │
+  │                                                          │ change       │
+  ├──────────────────────────────────────────────────────────┼──────────────┤
+  │                                                          │ Add findings │
+  │ client/src/.../pulls/constants.ts                        │  column to   │
+  │                                                          │ grid         │
+  ├──────────────────────────────────────────────────────────┼──────────────┤
+  │                                                          │ Render       │
+  │ client/src/.../pulls/_components/PRRow/PRRow.tsx         │ severity     │
+  │                                                          │ badges       │
+  ├──────────────────────────────────────────────────────────┼──────────────┤
+  │ client/src/.../pulls/[number]/_components/FindingsTab/Fi │ Filter bar + │
+  │ ndingsTab.tsx                                            │  state       │
+  ├──────────────────────────────────────────────────────────┼──────────────┤
+  │ client/src/.../pulls/[number]/_components/FindingsPanel/ │ Accept +     │
+  │ FindingsPanel.tsx                                        │ apply filter │
+  └──────────────────────────────────────────────────────────┴──────────────┘
+
+  ---
+  Out of scope
+
+  - Filtering on the PR list page beyond navigation (no inline popover filter).
+  - Persisting selected severity filter in URL on the detail page (it reads from
+  URL but doesn't push on toggle — keeps it simple).
+  - Dismissed findings excluded from counts (already excluded in existing
+  blocker logic, same rule applies).
+
+  ---
+  Does this plan look right? Any adjustments before I start implementation?
+
+✻ Brewed for 2m 37s
+
+※ recap: Adding severity-level finding counters (CRITICAL / WARNING / SUGGESTION) to the PR list and detail pages, with click-to-filter behavior. Waiting for user approval of the 5-phase spec before writing any code. (disable recaps in /config)
+
+❯ Так, виконуй. Після виконання, будь ласка, надайте гарний опис того, що було  
+  зроблено.                                                                     
+
+⏺ Let me read all the relevant files before making any changes.
+
+  Searched for 3 patterns, read 20 files, ran 3 shell commands (ctrl+o to expand)
+  ⎿  Loaded server/CLAUDE.md
+  ⎿  Loaded client/CLAUDE.md
+
+⏺ Now I have everything I need. Let me also check the DB schema for the findings
+  table, then start implementing.
+
+  Searched for 1 pattern, read 5 files (ctrl+o to expand)
+
+⏺ Let me check the client's platform contracts and the usePulls hook.
+
+  Searched for 6 patterns, read 2 files, ran 1 shell command (ctrl+o to expand)
+
+⏺ Good. SeverityBadge is exported from @devdigest/ui. Now I'll implement all
+  changes, starting with server contracts.
+
+  Phase 1 & 2 — Server contracts + route query
+
+⏺ Update(~/Projects/goit-agentic-engineering/server/src/vendor/shared/contracts/
+        platform.ts)
+  ⎿  Added 6 lines
+      172    score: z.number().int().nullish(),
+      173    // Total cost of all agent runs for this PR (computed from t
+           okens × price).
+      174    total_cost_usd: z.number().nullable().nullish(),
+      175 +  // Per-severity finding counts from the latest review (null 
+          +until reviewed; excludes dismissed).                          
+      176 +  findings_summary: z.object({                                
+      177 +    CRITICAL: z.number().int(),                               
+      178 +    WARNING: z.number().int(),                                
+      179 +    SUGGESTION: z.number().int(),                             
+      180 +  }).nullish(),                                               
+      181  });
+      182  export type PrMeta = z.infer<typeof PrMeta>;
+      183  
+
+⏺ Now update the server route to compute findings_summary:
+⏺ Update(~/Projects/goit-agentic-engineering/server/src/modules/pulls/routes.ts)
+  ⎿  Added 1 line, removed 1 line
+      1  import type { FastifyInstance } from 'fastify';
+      2  import type { ZodTypeProvider } from 'fastify-type-provider-zod'
+         ;
+      3 -import { and, desc, eq, inArray } from 'drizzle-orm';           
+      3 +import { and, desc, eq, inArray, isNull } from 'drizzle-orm';   
+      4  import { estimateCost } from '../../adapters/llm/pricing.js';
+      5  import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } 
+         from '@devdigest/shared';
+      6  import { PrCommentInput } from '@devdigest/shared';
+
+⏺ Update(~/Projects/goit-agentic-engineering/server/src/modules/pulls/routes.ts)
+  ⎿  Added 28 lines, removed 7 lines
+      112        }
+      113      }
+      114  
+      115 -    // Latest-review SCORE per PR for the list's score ring. C
+          -omputed on read                                               
+      116 -    // from reviews (no FK denorm); the list is small, so one 
+          -IN-query + JS                                                 
+      117 -    // grouping is cheap. (The per-severity FINDINGS breakdown
+          - is intentionally                                             
+      118 -    // not surfaced on the list — findings live on the PR deta
+          -il page.)                                                     
+      115 +    // Latest-review SCORE + per-severity FINDINGS counts per 
+          +PR. Computed on                                               
+      116 +    // read (no FK denorm); the list is small, so IN-query + J
+          +S grouping is cheap.                                          
+      117      const prIds = rows.map((r) => r.id);
+      120 -    const latestReviewByPr = new Map<string, { score: number |
+          - null }>();                                                   
+      118 +    const latestReviewByPr = new Map<string, { score: number |
+          + null; id: string }>();                                       
+      119      if (prIds.length > 0) {
+      120        const reviewRows = await container.db
+      123 -        .select({ prId: t.reviews.prId, score: t.reviews.score
+          - })                                                           
+      121 +        .select({ prId: t.reviews.prId, score: t.reviews.score
+          +, id: t.reviews.id })                                         
+      122          .from(t.reviews)
+      123          .where(and(inArray(t.reviews.prId, prIds), eq(t.review
+           s.kind, 'review')))
+      124          .orderBy(desc(t.reviews.createdAt));
+      125        // Rows are newest-first → first seen per PR is the late
+           st review.
+      126        for (const rv of reviewRows) {
+      129 -        if (!latestReviewByPr.has(rv.prId)) latestReviewByPr.s
+          -et(rv.prId, { score: rv.score });                             
+      127 +        if (!latestReviewByPr.has(rv.prId)) latestReviewByPr.s
+          +et(rv.prId, { score: rv.score, id: rv.id });                  
+      128        }
+      129      }
+      130  
+      131 +    // Per-severity finding counts from the latest review (non
+          +-dismissed only).                                             
+      132 +    type FindingsSummary = { CRITICAL: number; WARNING: number
+          +; SUGGESTION: number };                                       
+      133 +    const findingsSummaryByPr = new Map<string, FindingsSummar
+          +y>();                                                         
+      134 +    if (latestReviewByPr.size > 0) {                          
+      135 +      const latestReviewIds = [...latestReviewByPr.values()].m
+          +ap((v) => v.id);                                              
+      136 +      const reviewIdToPrId = new Map<string, string>();       
+      137 +      for (const [prId, rv] of latestReviewByPr) reviewIdToPrI
+          +d.set(rv.id, prId);                                           
+      138 +                                                              
+      139 +      const findingRows = await container.db                  
+      140 +        .select({ reviewId: t.findings.reviewId, severity: t.f
+          +indings.severity })                                           
+      141 +        .from(t.findings)                                     
+      142 +        .where(and(inArray(t.findings.reviewId, latestReviewId
+          +s), isNull(t.findings.dismissedAt)));                         
+      143 +                                                              
+      144 +      for (const f of findingRows) {                          
+      145 +        const prId = reviewIdToPrId.get(f.reviewId);          
+      146 +        if (!prId) continue;                                  
+      147 +        const counts = findingsSummaryByPr.get(prId) ?? { CRIT
+          +ICAL: 0, WARNING: 0, SUGGESTION: 0 };                         
+      148 +        const sev = f.severity as keyof FindingsSummary;      
+      149 +        if (sev in counts) counts[sev]++;                     
+      150 +        findingsSummaryByPr.set(prId, counts);                
+      151 +      }                                                       
+      152 +    }                                                         
+      153 +                                                              
+      154      const totalCostByPr = new Map<string, number | null>();
+      155      if (prIds.length > 0) {
+      156        const runRows = await container.db
+
+⏺ Update(~/Projects/goit-agentic-engineering/server/src/modules/pulls/routes.ts)
+  ⎿  Added 1 line
+      197          updated_at: r.updatedAt?.toISOString() ?? null,
+      198          score: review ? review.score : null,
+      199          total_cost_usd: totalCostByPr.get(r.id) ?? null,
+      200 +        findings_summary: findingsSummaryByPr.get(r.id) ?? nul
+          +l,                                                            
+      201        };
+      202      });
+      203    });
+
+⏺ Phase 3 — Mirror the contract change on the client:
+
+⏺ Update(src/vendor/shared/contracts/platform.ts)
+  ⎿  Added 6 lines
+      172    score: z.number().int().nullish(),
+      173    // Total cost of all agent runs for this PR (computed from t
+           okens × price).
+      174    total_cost_usd: z.number().nullable().nullish(),
+      175 +  // Per-severity finding counts from the latest review (null 
+          +until reviewed; excludes dismissed).                          
+      176 +  findings_summary: z.object({                                
+      177 +    CRITICAL: z.number().int(),                               
+      178 +    WARNING: z.number().int(),                                
+      179 +    SUGGESTION: z.number().int(),                             
+      180 +  }).nullish(),                                               
+      181  });
+      182  export type PrMeta = z.infer<typeof PrMeta>;
+      183  
+
+⏺ Phase 4 — PR list UI: i18n, constants, styles, PRRow
+
+⏺ Update(messages/en/prReview.json)
+  ⎿  Added 1 line
+      91        "author": "Author",
+      92        "size": "Size",
+      93        "score": "Score",
+      94 +      "findings": "Findings",                                  
+      95        "status": "Status",
+      96        "cost": "Cost",
+      97        "updated": "Updated"
+
+⏺ Update(src/app/repos/[repoId]/pulls/constants.ts)
+  ⎿  Added 1 line, removed 1 line
+      24  };
+      25  
+      26  /** Grid template for both the header row and PR rows. */
+      27 -export const GRID = "1fr 132px 92px 60px 118px 72px 78px";     
+      27 +export const GRID = "1fr 132px 92px 60px 90px 118px 72px 78px";
+      28  
+      29  /** Line-count thresholds for the S/M/L size bucket. */
+      30  export const SIZE_SMALL_MAX = 100;
+
+⏺ Update(src/app/repos/[repoId]/pulls/constants.ts)
+  ⎿  Added 1 line
+      44    "author",
+      45    "size",
+      46    "score",
+      47 +  "findings",                                                  
+      48    "status",
+      49    "cost",
+      50    "updated",
+
+⏺ Now add a findingsCell style and update PRRow to render the compact severity
+  badges:
+
+⏺ Update(src/app/repos/[repoId]/pulls/styles.ts)
+  ⎿  Added 5 lines
+      54      fontVariantNumeric: "tabular-nums",
+      55    } satisfies CSSProperties,
+      56    muted: { color: "var(--text-muted)" } satisfies CSSProperties
+          ,
+      57 +  findingsCell: {                                              
+      58 +    display: "flex",                                           
+      59 +    alignItems: "center",                                      
+      60 +    gap: 4,                                                    
+      61 +  } satisfies CSSProperties,                                   
+      62    filterBar: {
+      63      display: "flex",
+      64      alignItems: "center",
+
+⏺ Now update PRRow to add the findings badges cell:
+
+⏺ Update(src/app/repos/[repoId]/pulls/_components/PRRow/PRRow.tsx)
+  ⎿  Added 1 line, removed 1 line
+       4  import React from "react";
+       5  import { useRouter } from "next/navigation";
+       6  import { useTranslations } from "next-intl";
+       7 -import { Icon, Avatar, Badge, CircularScore } from "@devdigest/
+         -ui";                                                           
+       7 +import { Icon, Avatar, Badge, CircularScore, SeverityBadge } fr
+         +om "@devdigest/ui";                                            
+       8  import type { PrMeta } from "@/lib/types";
+       9  import { SIZE_COLOR, STATUS_META } from "../../constants";
+      10  import { relativeTime, sizeOf } from "../../helpers";
+
+⏺ Update(src/app/repos/[repoId]/pulls/_components/PRRow/PRRow.tsx)
+  ⎿  Added 22 lines
+      53            <span style={s.muted}>—</span>
+      54          )}
+      55        </div>
+      56 +      <div style={s.findingsCell}>                             
+      57 +        {pr.findings_summary ? (                               
+      58 +          (["CRITICAL", "WARNING", "SUGGESTION"] as const).map(
+         +(sev) => {                                                     
+      59 +            const count = pr.findings_summary![sev];           
+      60 +            return (                                           
+      61 +              <span                                            
+      62 +                key={sev}                                      
+      63 +                title={`${count} ${sev}`}                      
+      64 +                style={{ opacity: count === 0 ? 0.35 : 1 }}    
+      65 +                onClick={(e) => {                              
+      66 +                  e.stopPropagation();                         
+      67 +                  router.push(`/repos/${repoId}/pulls/${pr.numb
+         +er}?tab=findings&severity=${sev}`);                            
+      68 +                }}                                             
+      69 +              >                                                
+      70 +                <SeverityBadge severity={sev} count={count} com
+         +pact />                                                        
+      71 +              </span>                                          
+      72 +            );                                                 
+      73 +          })                                                   
+      74 +        ) : (                                                  
+      75 +          <span style={s.muted}>—</span>                       
+      76 +        )}                                                     
+      77 +      </div>                                                   
+      78        <div>
+      79          <Badge dot color={st.c} bg="transparent">
+      80            {t(`list.status.${st.labelKey}`)}
+
+⏺ Phase 5 — PR detail: FindingsPanel gets filterSeverity prop
+
+⏺ Update(src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/Finding
+        sPanel.tsx)
+  ⎿  Added 7 lines, removed 2 lines
+       5  import React from "react";
+       6  import { useTranslations } from "next-intl";
+       7  import { Toggle, EmptyState } from "@devdigest/ui";
+       8 -import type { FindingRecord } from "@devdigest/shared";        
+       8 +import type { FindingRecord, Severity } from "@devdigest/shared
+         +";                                                             
+       9  import { FindingCard } from "../FindingCard";
+      10  import { useFindingAction } from "../../../../../../../lib/hook
+          s/reviews";
+      11  import { KEY_TO_ACTION } from "./constants";
+     ...
+      17    prId,
+      18    repoFullName,
+      19    headSha,
+      20 +  filterSeverity,                                              
+      21  }: {
+      22    findings: FindingRecord[];
+      23    prId: string;
+      24    repoFullName?: string | null;
+      25    headSha?: string | null;
+      26 +  filterSeverity?: Severity | null;                            
+      27  }) {
+      28    const t = useTranslations("prReview");
+      29    const action = useFindingAction();
+      30    const [hideLow, setHideLow] = React.useState(false);
+      31    const [focusIdx, setFocusIdx] = React.useState(0);
+      32  
+      31 -  const shown = React.useMemo(() => visibleFindings(findings, h
+         -ideLow), [findings, hideLow]);                                 
+      33 +  const shown = React.useMemo(                                 
+      34 +    () => visibleFindings(findings, hideLow, filterSeverity ?? 
+         +null),                                                         
+      35 +    [findings, hideLow, filterSeverity],                       
+      36 +  );                                                           
+      37  
+      38    // j/k navigation + a/d shortcuts on the focused finding (key
+          board).
+      39    React.useEffect(() => {
+
+⏺ Now update the empty state in FindingsPanel to be severity-aware:
+
+⏺ Update(src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/Finding
+        sPanel.tsx)
+  ⎿  Added 5 lines, removed 1 line
+      61  
+      62        <div style={s.list}>
+      63          {shown.length === 0 ? (
+      64 -          <EmptyState icon="Filter" title={t("panel.noMatchTitl
+         -e")} body={t("panel.noMatchBody")} />                          
+      64 +          <EmptyState                                          
+      65 +            icon="Filter"                                      
+      66 +            title={filterSeverity ? `No ${filterSeverity.toLowe
+         +rCase()} findings` : t("panel.noMatchTitle")}                  
+      67 +            body={filterSeverity ? `This run has no ${filterSev
+         +erity.toLowerCase()} findings.` : t("panel.noMatchBody")}      
+      68 +          />                                                   
+      69          ) : (
+      70            shown.map((f, i) => (
+      71              <FindingCard
+
+⏺ Update visibleFindings helper to accept severity filter:
+
+⏺ Update(src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/helpers
+        .ts)
+  ⎿  Added 8 lines, removed 3 lines
+       1 -import type { FindingRecord } from "@devdigest/shared";        
+       1 +import type { FindingRecord, Severity } from "@devdigest/shared
+         +";                                                             
+       2  import { LOW_CONFIDENCE_THRESHOLD, SEVERITY_ORDER } from "./con
+          stants";
+       3  
+       4 -/** Optionally drop low-confidence findings and sort by severit
+         -y. */                                                          
+       5 -export function visibleFindings(findings: FindingRecord[], hide
+         -Low: boolean): FindingRecord[] {                               
+       4 +/** Optionally drop low-confidence findings, filter by severity
+         +, and sort. */                                                 
+       5 +export function visibleFindings(                               
+       6 +  findings: FindingRecord[],                                   
+       7 +  hideLow: boolean,                                            
+       8 +  filterSeverity: Severity | null = null,                      
+       9 +): FindingRecord[] {                                           
+      10    let shown = findings;
+      11    if (hideLow) shown = shown.filter((f) => f.confidence >= LOW_
+          CONFIDENCE_THRESHOLD);
+      12 +  if (filterSeverity) shown = shown.filter((f) => f.severity ==
+         += filterSeverity);                                             
+      13    return [...shown].sort(
+      14      (a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORD
+          ER[b.severity] ?? 9),
+      15    );
+
+⏺ Update ReviewRunAccordion to accept and pass filterSeverity:
+
+⏺ Update(src/app/repos/[repoId]/pulls/[number]/_components/ReviewRunAccordion/Re
+        viewRunAccordion.tsx)
+  ⎿  Added 1 line, removed 1 line
+       7  
+       8  import React from "react";
+       9  import { Icon, Badge } from "@devdigest/ui";
+      10 -import type { ReviewRecord, Verdict } from "@devdigest/shared";
+      10 +import type { ReviewRecord, Verdict, Severity } from "@devdiges
+         +t/shared";                                                     
+      11  import { FindingsPanel } from "../FindingsPanel";
+      12  import { VerdictBanner } from "../VerdictBanner";
+      13  import { useDeleteReview } from "../../../../../../../lib/hooks
+          /reviews";
+
+⏺ Update(src/app/repos/[repoId]/pulls/[number]/_components/ReviewRunAccordion/Re
+        viewRunAccordion.tsx)
+  ⎿  Added 2 lines
+      31    headSha,
+      32    targetRunId = null,
+      33    targetNonce = 0,
+      34 +  filterSeverity = null,                                       
+      35  }: {
+      36    review: ReviewRecord;
+      37    prId: string;
+     ...
+      42     *  (driven from the Timeline: clicking an agent name navigat
+          es here). */
+      43    targetRunId?: string | null;
+      44    targetNonce?: number;
+      45 +  filterSeverity?: Severity | null;                            
+      46  }) {
+      47    const [open, setOpen] = React.useState(defaultOpen);
+      48    const rootRef = React.useRef<HTMLDivElement | null>(null);
+
+⏺ Update(src/app/repos/[repoId]/pulls/[number]/_components/ReviewRunAccordion/Re
+        viewRunAccordion.tsx)
+  ⎿  Added 1 line
+      154              prId={prId}
+      155              repoFullName={repoFullName}
+      156              headSha={headSha}
+      157 +            filterSeverity={filterSeverity}                   
+      158            />
+      159          </div>
+      160        )}
+⏺ Now add styles for the severity filter bar in FindingsTab/styles.ts:
+
+⏺ Update(src/app/repos/[repoId]/pulls/[number]/_components/FindingsTab/styles.ts
+        )
+  ⎿  Added 23 lines
+       1  import type { CSSProperties } from "react";
+       2  
+       3  export const s = {
+       4 +  severityFilterBar: {                                         
+       5 +    display: "flex",                                           
+       6 +    alignItems: "center",                                      
+       7 +    gap: 6,                                                    
+       8 +    marginBottom: 14,                                          
+       9 +  } satisfies CSSProperties,                                   
+      10 +  severityFilterBtn: (active: boolean): CSSProperties => ({    
+      11 +    background: "none",                                        
+      12 +    border: active ? "2px solid currentColor" : "2px solid tran
+         +sparent",                                                      
+      13 +    borderRadius: 7,                                           
+      14 +    padding: 0,                                                
+      15 +    cursor: "pointer",                                         
+      16 +    outline: "none",                                           
+      17 +    display: "inline-flex",                                    
+      18 +    opacity: 1,                                                
+      19 +    transition: "border-color .1s",                            
+      20 +  }),                                                          
+      21 +  severityFilterLabel: {                                       
+      22 +    fontSize: 12,                                              
+      23 +    color: "var(--text-muted)",                                
+      24 +    marginRight: 4,                                            
+      25 +    flexShrink: 0,                                             
+      26 +  } satisfies CSSProperties,                                   
+      27    reviewInProgress: {
+      28      marginBottom: 18,
+      29      display: "flex",
+
+⏺ Now update FindingsTab to add the severity filter state, filter bar, and pass
+  filterSeverity down:
+
+⏺ Update(src/app/repos/[repoId]/pulls/[number]/_components/FindingsTab/FindingsT
+        ab.tsx)
+  ⎿  Added 24 lines, removed 2 lines
+       1  "use client";
+       2  
+       3  import React, { useCallback } from "react";
+       4 -import { Icon, Badge, Button, SectionLabel, EmptyState } from "
+         -@devdigest/ui";                                                
+       4 +import { Icon, Badge, Button, SectionLabel, EmptyState, Severit
+         +yBadge } from "@devdigest/ui";                                 
+       5  import { RunStatus } from "../RunStatus";
+       6  import { RunHistory } from "../RunHistory/RunHistory";
+       7  import { ReviewRunAccordion } from "../ReviewRunAccordion";
+       8  import { s } from "./styles";
+       9 -import type { FindingRecord, ReviewRecord, RunSummary, PrCommit
+         - } from "@devdigest/shared";                                   
+       9 +import type { FindingRecord, ReviewRecord, RunSummary, PrCommit
+         +, Severity } from "@devdigest/shared";                         
+      10  import type { UseMutationResult } from "@tanstack/react-query";
+      11  
+      12 +const SEVERITIES = ["CRITICAL", "WARNING", "SUGGESTION"] as con
+         +st;                                                            
+      13 +                                                               
+      14  interface FindingsTabProps {
+      15    prId: string | null;
+      16    liveRunIds: string[];
+     ...
+      26    onOpenTrace: (id: string) => void;
+      27    onDelete: (id: string) => void;
+      28    onRunDone: () => void;
+      29 +  /** Pre-selected severity filter (from URL ?severity= on deep
+         +-link). */                                                     
+      30 +  initialSeverity?: Severity | null;                           
+      31  }
+      32  
+      33  export function FindingsTab({
+     ...
+      44    onOpenTrace,
+      45    onDelete,
+      46    onRunDone,
+      47 +  initialSeverity = null,                                      
+      48  }: FindingsTabProps) {
+      49 +  const [filterSeverity, setFilterSeverity] = React.useState<Se
+         +verity | null>(initialSeverity);                               
+      50 +                                                               
+      51 +  // Aggregate counts across all non-dismissed findings from al
+         +l review runs.                                                 
+      52 +  const allActive = React.useMemo(                             
+      53 +    () => runs.flatMap((r) => r.findings.filter((f) => !f.dismi
+         +ssed_at)),                                                     
+      54 +    [runs],                                                    
+      55 +  );                                                           
+      56 +  const counts = React.useMemo(                                
+      57 +    () =>                                                      
+      58 +      SEVERITIES.reduce(                                       
+      59 +        (acc, sev) => ({ ...acc, [sev]: allActive.filter((f) =>
+         + f.severity === sev).length }),                                
+      60 +        {} as Record<Severity, number>,                        
+      61 +      ),                                                       
+      62 +    [allActive],                                               
+      63 +  );                                                           
+      64 +  const hasCounts = allActive.length > 0;                      
+      65 +                                                               
+      66    const handleCancelAll = useCallback(() => {
+      67      liveRunIds.forEach((id) => cancelMutation.mutate(id));
+      68    }, [liveRunIds, cancelMutation]);
+
+⏺ Now add the severity filter bar in the JSX, just above the "Review runs"
+  SectionLabel, and pass filterSeverity to each accordion:
+
+⏺ Update(src/app/repos/[repoId]/pulls/[number]/_components/FindingsTab/FindingsT
+        ab.tsx)
+  ⎿  Added 17 lines
+      160          </div>
+      161        )}
+      162  
+      163 +      {hasCounts && (                                         
+      164 +        <div style={s.severityFilterBar}>                     
+      165 +          <span style={s.severityFilterLabel}>Filter:</span>  
+      166 +          {SEVERITIES.map((sev) => (                          
+      167 +            <button                                           
+      168 +              key={sev}                                       
+      169 +              title={filterSeverity === sev ? `Show all severi
+          +ties` : `Show ${sev.toLowerCase()} only`}                     
+      170 +              style={s.severityFilterBtn(filterSeverity === se
+          +v)}                                                           
+      171 +              onClick={() => setFilterSeverity((prev) => (prev
+          + === sev ? null : sev))}                                      
+      172 +            >                                                 
+      173 +              <SeverityBadge severity={sev} count={counts[sev]
+          +} />                                                          
+      174 +            </button>                                         
+      175 +          ))}                                                 
+      176 +        </div>                                                
+      177 +      )}                                                      
+      178 +                                                              
+      179        <SectionLabel
+      180          icon="AlertOctagon"
+      181          right={<span style={{ fontSize: 12, color: "var(--text
+           -muted)" }}>grouped by run · newest first</span>}
+     ...
+      202              headSha={headSha}
+      203              targetRunId={target?.runId ?? null}
+      204              targetNonce={target?.n ?? 0}
+      205 +            filterSeverity={filterSeverity}                   
+      206            />
+      207          ))
+      208        )}
+
+⏺ Now update the detail page to read severity from URL and pass it to
+  FindingsTab:
+
+⏺ Update(src/app/repos/[repoId]/pulls/[number]/page.tsx)
+  ⎿  Added 1 line, removed 1 line
+      21  import { useActiveRepo, useRepoNotFound } from "../../../../../
+          lib/repo-context";
+      22  import { ApiError } from "../../../../../lib/api";
+      23  import { githubPrUrl } from "../../../../../lib/github-urls";
+      24 -import type { FindingRecord } from "@devdigest/shared";        
+      24 +import type { FindingRecord, Severity } from "@devdigest/shared
+         +";                                                             
+      25  
+      26  export default function PRDetailPage() {
+      27    const params = useParams<{ repoId: string; number: string }>(
+          );
+
+⏺ Update(src/app/repos/[repoId]/pulls/[number]/page.tsx)
+  ⎿  Added 6 lines
+      59  
+      60    const tab = search.get("tab") ?? "overview";
+      61    const traceRunId = search.get("trace");
+      62 +  const severityParam = search.get("severity");                
+      63 +  const VALID_SEVERITIES: Severity[] = ["CRITICAL", "WARNING", 
+         +"SUGGESTION"];                                                 
+      64 +  const initialSeverity: Severity | null =                     
+      65 +    severityParam && VALID_SEVERITIES.includes(severityParam as
+         + Severity)                                                     
+      66 +      ? (severityParam as Severity)                            
+      67 +      : null;                                                  
+      68    const setParam = (key: string, val: string | null) => {
+      69      const sp = new URLSearchParams(search.toString());
+      70      if (val == null) sp.delete(key);
+
+⏺ Update(src/app/repos/[repoId]/pulls/[number]/page.tsx)
+  ⎿  Added 1 line
+      154              repoFullName={repoFullName}
+      155              headSha={pr.head_sha}
+      156              cancelMutation={cancel}
+      157 +            initialSeverity={initialSeverity}                 
+      158              onOpenTrace={(id) => setParam("trace", id)}
+      159              onDelete={(id) => {
+      160                if (window.confirm("Delete this run from history
+           ? (its logs are removed too)"))
+
+⏺ Now let's run typechecks on both server and client to verify everything is
+  correct:
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ Both clean. Let me also run the client tests to check nothing broke:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All 21 tests pass. Let me do a quick sanity check on the final state of the
+  two most complex changed files:
+
+  Read 2 files (ctrl+o to expand)
+
+⏺ Everything looks correct. Now let me append to the session LEARNINGS.md as
+  required by the protocol:
+
+⏺ Update(LEARNINGS.md)
+  ⎿  File must be read first
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(LEARNINGS.md)
+  ⎿  Added 2 lines
+      35  
+      36  <!-- Датовані підсумки сесій -->
+      37  
+      38 +[2026-06-19] Severity filter bar in FindingsTab uses local stat
+         +e (not URL) initialized from `initialSeverity` prop; clicking a
+         +n already-active badge toggles back to "all" via `prev === sev 
+         +? null : sev` — FindingsTab.tsx:49                             
+      39 +                                                               
+      40  ## Open Questions
+      41  
+      42  <!-- Що лишилось нез'ясованим -->
+
+⏺ ---
+  Що було зроблено
+
+  Реалізована фіча «знахідки за критичністю» через 5 фаз, всі typecheck чисті,
+  21 тест проходить.
+
+  ---
+  Фаза 1–2 — Сервер: нове поле findings_summary у відповіді списку PR
+
+  server/src/vendor/shared/contracts/platform.ts — додано поле findings_summary:
+  { CRITICAL, WARNING, SUGGESTION } | null до схеми PrMeta (Zod).
+
+  server/src/modules/pulls/routes.ts — маршрут GET /repos/:id/pulls тепер:
+  - запитує id у кожного рядка з таблиці reviews (до цього брав лише score);
+  - будує зворотну карту reviewId → prId;
+  - робить один SQL-запит до findings по всіх latest-review ID, фільтруючи
+  dismissedAt IS NULL;
+  - агрегує кількості в JS і повертає findings_summary для кожного PR.
+
+  ---
+  Фаза 3 — Клієнтський контракт
+
+  client/src/vendor/shared/contracts/platform.ts — те саме поле findings_summary
+  додано до дзеркальної копії PrMeta.
+
+  ---
+  Фаза 4 — PR list: колонка FINDINGS
+
+  Файл: messages/en/prReview.json
+  Зміна: list.columns.findings = "Findings"
+  ────────────────────────────────────────
+  Файл: pulls/constants.ts
+  Зміна: COLUMN_KEYS + нова колонка 90px у GRID
+  ────────────────────────────────────────
+  Файл: pulls/styles.ts
+  Зміна: стиль findingsCell (flex row, gap 4px)
+  ────────────────────────────────────────
+  Файл: pulls/_components/PRRow/PRRow.tsx
+  Зміна: три компактних <SeverityBadge> з opacity 0.35 при count=0; клік по
+    значку зупиняє propagation і переходить на
+    /pulls/:number?tab=findings&severity=CRITICAL
+
+  ---
+  Фаза 5 — PR detail: фільтр по severity
+
+  FindingsPanel/helpers.ts — visibleFindings приймає третій аргумент
+  filterSeverity: Severity | null; при заданому значенні залишає лише знахідки
+  відповідного рівня. Порожній стан адаптований: "No critical findings in this 
+  run.".
+
+  FindingsPanel/FindingsPanel.tsx — новий проп filterSeverity?: Severity | null.
+
+  ReviewRunAccordion/ReviewRunAccordion.tsx — приймає і передає filterSeverity у
+  FindingsPanel.
+
+  FindingsTab/FindingsTab.tsx — ключові зміни:
+  - Стан filterSeverity: Severity | null (ініціалізується з initialSeverity
+  проп).
+  - Агрегатні лічильники по всіх активних (не dismissed) знахідках з усіх review
+  runs.
+  - Фільтр-бар з трьох кнопок <SeverityBadge> над "Review runs"; активна кнопка
+  підкреслена рамкою; повторний клік знімає фільтр.
+  - Бар прихований, якщо ще немає жодної знахідки (hasCounts = false).
+
+  pulls/[number]/page.tsx — зчитує ?severity= з URL, валідує проти
+  ["CRITICAL","WARNING","SUGGESTION"] і передає як initialSeverity у FindingsTab
+  — глибоке посилання з PR-списку одразу відкриває потрібний фільтр.
+
+✻ Sautéed for 7m 42s
+
+❯  можеш зробити коротесенький звіт, щоб я міг додати коментар для коміта?      
+
+⏺ feat: findings severity counters on PR list and detail page
+
+  - Add findings_summary (CRITICAL/WARNING/SUGGESTION counts) to PrMeta contract
+  and GET /repos/:id/pulls response
+  - PR list: new FINDINGS column with compact severity badges; dimmed when
+  count=0; click navigates to detail with pre-applied filter
+  - PR detail: severity filter bar above "Review runs" with clickable badges;
+  active badge highlighted; click again to deselect
+  - Deep-link support via ?tab=findings&severity=CRITICAL — badge click on list
+  pre-sets the filter on arrival
+
+✻ Cogitated for 6s

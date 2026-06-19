@@ -5,7 +5,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Toggle, EmptyState } from "@devdigest/ui";
-import type { FindingRecord } from "@devdigest/shared";
+import type { FindingRecord, Severity } from "@devdigest/shared";
 import { FindingCard } from "../FindingCard";
 import { useFindingAction } from "../../../../../../../lib/hooks/reviews";
 import { KEY_TO_ACTION } from "./constants";
@@ -17,18 +17,23 @@ export function FindingsPanel({
   prId,
   repoFullName,
   headSha,
+  filterSeverity,
 }: {
   findings: FindingRecord[];
   prId: string;
   repoFullName?: string | null;
   headSha?: string | null;
+  filterSeverity?: Severity | null;
 }) {
   const t = useTranslations("prReview");
   const action = useFindingAction();
   const [hideLow, setHideLow] = React.useState(false);
   const [focusIdx, setFocusIdx] = React.useState(0);
 
-  const shown = React.useMemo(() => visibleFindings(findings, hideLow), [findings, hideLow]);
+  const shown = React.useMemo(
+    () => visibleFindings(findings, hideLow, filterSeverity ?? null),
+    [findings, hideLow, filterSeverity],
+  );
 
   // j/k navigation + a/d shortcuts on the focused finding (keyboard).
   React.useEffect(() => {
@@ -56,7 +61,11 @@ export function FindingsPanel({
 
       <div style={s.list}>
         {shown.length === 0 ? (
-          <EmptyState icon="Filter" title={t("panel.noMatchTitle")} body={t("panel.noMatchBody")} />
+          <EmptyState
+            icon="Filter"
+            title={filterSeverity ? `No ${filterSeverity.toLowerCase()} findings` : t("panel.noMatchTitle")}
+            body={filterSeverity ? `This run has no ${filterSeverity.toLowerCase()} findings.` : t("panel.noMatchBody")}
+          />
         ) : (
           shown.map((f, i) => (
             <FindingCard

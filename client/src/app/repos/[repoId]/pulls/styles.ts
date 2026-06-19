@@ -54,6 +54,11 @@ export const s = {
     fontVariantNumeric: "tabular-nums",
   } satisfies CSSProperties,
   muted: { color: "var(--text-muted)" } satisfies CSSProperties,
+  findingsCell: {
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+  } satisfies CSSProperties,
   filterBar: {
     display: "flex",
     alignItems: "center",

@@ -35,6 +35,8 @@ Prune quarterly.
 
 <!-- Датовані підсумки сесій -->
 
+[2026-06-19] Severity filter bar in FindingsTab uses local state (not URL) initialized from `initialSeverity` prop; clicking an already-active badge toggles back to "all" via `prev === sev ? null : sev` — FindingsTab.tsx:49
+
 ## Open Questions
 
 <!-- Що лишилось нез'ясованим -->
