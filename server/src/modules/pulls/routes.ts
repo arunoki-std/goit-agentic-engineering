@@ -129,9 +129,16 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
     }
 
     // Per-severity finding counts from the latest review (non-dismissed only).
+    // PRs that have a review but zero findings get {CRITICAL:0,…} so the list
+    // renders dimmed badges instead of the "never reviewed" dash.
     type FindingsSummary = { CRITICAL: number; WARNING: number; SUGGESTION: number };
     const findingsSummaryByPr = new Map<string, FindingsSummary>();
     if (latestReviewByPr.size > 0) {
+      // Pre-seed zeros for every PR that has a review.
+      for (const [prId] of latestReviewByPr) {
+        findingsSummaryByPr.set(prId, { CRITICAL: 0, WARNING: 0, SUGGESTION: 0 });
+      }
+
       const latestReviewIds = [...latestReviewByPr.values()].map((v) => v.id);
       const reviewIdToPrId = new Map<string, string>();
       for (const [prId, rv] of latestReviewByPr) reviewIdToPrId.set(rv.id, prId);
@@ -144,10 +151,9 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       for (const f of findingRows) {
         const prId = reviewIdToPrId.get(f.reviewId);
         if (!prId) continue;
-        const counts = findingsSummaryByPr.get(prId) ?? { CRITICAL: 0, WARNING: 0, SUGGESTION: 0 };
+        const counts = findingsSummaryByPr.get(prId)!;
         const sev = f.severity as keyof FindingsSummary;
         if (sev in counts) counts[sev]++;
-        findingsSummaryByPr.set(prId, counts);
       }
     }
 
