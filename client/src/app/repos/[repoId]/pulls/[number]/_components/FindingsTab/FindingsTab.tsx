@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { Icon, Badge, Button, SectionLabel, EmptyState } from "@devdigest/ui";
+import { Icon, Badge, Button, SectionLabel, EmptyState, SeverityBadge } from "@devdigest/ui";
 import { RunStatus } from "../RunStatus";
 import { RunHistory } from "../RunHistory/RunHistory";
 import { ReviewRunAccordion } from "../ReviewRunAccordion";
 import { s } from "./styles";
-import type { FindingRecord, ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
+import type { FindingRecord, ReviewRecord, RunSummary, PrCommit, Severity } from "@devdigest/shared";
 import type { UseMutationResult } from "@tanstack/react-query";
+
+const SEVERITIES = ["CRITICAL", "WARNING", "SUGGESTION"] as const;
 
 interface FindingsTabProps {
   prId: string | null;
@@ -24,6 +26,8 @@ interface FindingsTabProps {
   onOpenTrace: (id: string) => void;
   onDelete: (id: string) => void;
   onRunDone: () => void;
+  /** Pre-selected severity filter (from URL ?severity= on deep-link). */
+  initialSeverity?: Severity | null;
 }
 
 export function FindingsTab({
@@ -40,7 +44,25 @@ export function FindingsTab({
   onOpenTrace,
   onDelete,
   onRunDone,
+  initialSeverity = null,
 }: FindingsTabProps) {
+  const [filterSeverity, setFilterSeverity] = React.useState<Severity | null>(initialSeverity);
+
+  // Aggregate counts across all non-dismissed findings from all review runs.
+  const allActive = React.useMemo(
+    () => runs.flatMap((r) => r.findings.filter((f) => !f.dismissed_at)),
+    [runs],
+  );
+  const counts = React.useMemo(
+    () =>
+      SEVERITIES.reduce(
+        (acc, sev) => ({ ...acc, [sev]: allActive.filter((f) => f.severity === sev).length }),
+        {} as Record<Severity, number>,
+      ),
+    [allActive],
+  );
+  const hasCounts = allActive.length > 0;
+
   const handleCancelAll = useCallback(() => {
     liveRunIds.forEach((id) => cancelMutation.mutate(id));
   }, [liveRunIds, cancelMutation]);
@@ -138,6 +160,22 @@ export function FindingsTab({
         </div>
       )}
 
+      {hasCounts && (
+        <div style={s.severityFilterBar}>
+          <span style={s.severityFilterLabel}>Filter:</span>
+          {SEVERITIES.map((sev) => (
+            <button
+              key={sev}
+              title={filterSeverity === sev ? `Show all severities` : `Show ${sev.toLowerCase()} only`}
+              style={s.severityFilterBtn(filterSeverity === sev)}
+              onClick={() => setFilterSeverity((prev) => (prev === sev ? null : sev))}
+            >
+              <SeverityBadge severity={sev} count={counts[sev]} />
+            </button>
+          ))}
+        </div>
+      )}
+
       <SectionLabel
         icon="AlertOctagon"
         right={<span style={{ fontSize: 12, color: "var(--text-muted)" }}>grouped by run · newest first</span>}
@@ -164,6 +202,7 @@ export function FindingsTab({
             headSha={headSha}
             targetRunId={target?.runId ?? null}
             targetNonce={target?.n ?? 0}
+            filterSeverity={filterSeverity}
           />
         ))
       )}

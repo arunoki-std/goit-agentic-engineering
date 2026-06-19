@@ -4,16 +4,18 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Icon, Avatar, Badge, CircularScore } from "@devdigest/ui";
-import type { PrMeta } from "@/lib/types";
+import { Icon, Avatar, Badge, CircularScore, SeverityBadge } from "@devdigest/ui";
+import type { PrMeta, Severity } from "@/lib/types";
 import { SIZE_COLOR, STATUS_META } from "../../constants";
 import { relativeTime, sizeOf } from "../../helpers";
 import { s } from "../../styles";
+import { FindingsPopover } from "../FindingsPopover";
 
 export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
   const t = useTranslations("prReview");
   const router = useRouter();
   const [h, setH] = React.useState(false);
+  const [popoverAnchor, setPopoverAnchor] = React.useState<DOMRect | null>(null);
   const st = STATUS_META[pr.status] ?? STATUS_META.needs_review!;
   const { size, lines } = sizeOf(pr);
   const reviewed = pr.score != null; // null score ⇒ PR has never been reviewed
@@ -51,6 +53,39 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
           <CircularScore score={pr.score!} size={34} stroke={3} />
         ) : (
           <span style={s.muted}>—</span>
+        )}
+      </div>
+      <div style={s.findingsCell}>
+        {pr.findings_summary ? (
+          (["CRITICAL", "WARNING", "SUGGESTION"] as const).map((sev) => {
+            const count = pr.findings_summary![sev];
+            return (
+              <span
+                key={sev}
+                title={`${count} ${sev} — click to preview`}
+                style={{ opacity: count === 0 ? 0.35 : 1, cursor: count > 0 ? "pointer" : "default" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (count === 0) return;
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setPopoverAnchor((prev) => (prev ? null : rect));
+                }}
+              >
+                <SeverityBadge severity={sev} count={count} compact />
+              </span>
+            );
+          })
+        ) : (
+          <span style={s.muted}>—</span>
+        )}
+        {popoverAnchor && pr.id && (
+          <FindingsPopover
+            prId={pr.id}
+            repoId={repoId}
+            prNumber={pr.number}
+            anchorRect={popoverAnchor}
+            onClose={() => setPopoverAnchor(null)}
+          />
         )}
       </div>
       <div>

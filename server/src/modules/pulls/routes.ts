@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { estimateCost } from '../../adapters/llm/pricing.js';
 import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
@@ -112,21 +112,48 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
-    // Latest-review SCORE per PR for the list's score ring. Computed on read
-    // from reviews (no FK denorm); the list is small, so one IN-query + JS
-    // grouping is cheap. (The per-severity FINDINGS breakdown is intentionally
-    // not surfaced on the list — findings live on the PR detail page.)
+    // Latest-review SCORE + per-severity FINDINGS counts per PR. Computed on
+    // read (no FK denorm); the list is small, so IN-query + JS grouping is cheap.
     const prIds = rows.map((r) => r.id);
-    const latestReviewByPr = new Map<string, { score: number | null }>();
+    const latestReviewByPr = new Map<string, { score: number | null; id: string }>();
     if (prIds.length > 0) {
       const reviewRows = await container.db
-        .select({ prId: t.reviews.prId, score: t.reviews.score })
+        .select({ prId: t.reviews.prId, score: t.reviews.score, id: t.reviews.id })
         .from(t.reviews)
         .where(and(inArray(t.reviews.prId, prIds), eq(t.reviews.kind, 'review')))
         .orderBy(desc(t.reviews.createdAt));
       // Rows are newest-first → first seen per PR is the latest review.
       for (const rv of reviewRows) {
-        if (!latestReviewByPr.has(rv.prId)) latestReviewByPr.set(rv.prId, { score: rv.score });
+        if (!latestReviewByPr.has(rv.prId)) latestReviewByPr.set(rv.prId, { score: rv.score, id: rv.id });
+      }
+    }
+
+    // Per-severity finding counts from the latest review (non-dismissed only).
+    // PRs that have a review but zero findings get {CRITICAL:0,…} so the list
+    // renders dimmed badges instead of the "never reviewed" dash.
+    type FindingsSummary = { CRITICAL: number; WARNING: number; SUGGESTION: number };
+    const findingsSummaryByPr = new Map<string, FindingsSummary>();
+    if (latestReviewByPr.size > 0) {
+      // Pre-seed zeros for every PR that has a review.
+      for (const [prId] of latestReviewByPr) {
+        findingsSummaryByPr.set(prId, { CRITICAL: 0, WARNING: 0, SUGGESTION: 0 });
+      }
+
+      const latestReviewIds = [...latestReviewByPr.values()].map((v) => v.id);
+      const reviewIdToPrId = new Map<string, string>();
+      for (const [prId, rv] of latestReviewByPr) reviewIdToPrId.set(rv.id, prId);
+
+      const findingRows = await container.db
+        .select({ reviewId: t.findings.reviewId, severity: t.findings.severity })
+        .from(t.findings)
+        .where(and(inArray(t.findings.reviewId, latestReviewIds), isNull(t.findings.dismissedAt)));
+
+      for (const f of findingRows) {
+        const prId = reviewIdToPrId.get(f.reviewId);
+        if (!prId) continue;
+        const counts = findingsSummaryByPr.get(prId)!;
+        const sev = f.severity as keyof FindingsSummary;
+        if (sev in counts) counts[sev]++;
       }
     }
 
@@ -176,6 +203,7 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
         total_cost_usd: totalCostByPr.get(r.id) ?? null,
+        findings_summary: findingsSummaryByPr.get(r.id) ?? null,
       };
     });
   });

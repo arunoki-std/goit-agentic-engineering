@@ -35,6 +35,8 @@ Prune quarterly.
 
 <!-- Датовані підсумки сесій -->
 
+[2026-06-19] A reviewed PR with 0 findings returns `null` for `findings_summary` unless the map is pre-seeded with zero counters before the findings query — fixes the "—" vs. dimmed-badges ambiguity — pulls/routes.ts:120
+
 ## Open Questions
 
 <!-- Що лишилось нез'ясованим -->
