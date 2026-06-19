@@ -1,0 +1,88 @@
+╭─── Claude Code v2.1.181 ─────────────────────────────────────────────────────╮
+│                                                    │ Tips for getting        │
+│                 Welcome back Artem!                │ started                 │
+│                                                    │ ✔ Run /init to create … │
+│                      ▗ ▗   ▖ ▖                     │ ─────────────────────── │
+│                                                    │ What's new              │
+│                        ▘▘ ▝▝                       │ Added `/config key=val… │
+│  Sonnet 4.6 · Claude Pro · artem.slv@gmail.com's   │ Added `sandbox.allowAp… │
+│  Organization                                      │ Added `CLAUDE_CLIENT_P… │
+│        ~/Projects/goit-agentic-engineering         │ /release-notes for more │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+❯ /clear                                                                        
+
+❯ Коли агент у відповідному модулі: клієнт, сервер, reviewer-core ознайомившись 
+  з відповідними Claude.md, Learnings.md файлами виконує задачу. Якщо під час   
+  цієї задачі було якесь нетривіальне відкриття, виявлені неочевидні            
+  залежності, виміряні факти. То треба запустити \*\*Engineering Insights       
+  Skill\*\*. Треба створити цей скіл. Він має додавати висновки в необхідний    
+  \*\*Learnings\*\* MD-файл відповідного модуля. Того модуля, в якому працює    
+  агент.                                                                        
+
+⏺ Спочатку огляну структуру проєкту, щоб зрозуміти що вже є.
+
+  Searched for 3 patterns, read 7 files, listed 11 directories, ran 1 shell command (ctrl+o to expand)
+  ⎿  Loaded server/CLAUDE.md
+  ⎿  Loaded client/CLAUDE.md
+  ⎿  Loaded reviewer-core/CLAUDE.md
+
+⏺ Тепер розумію структуру. Скіли — це markdown-файли з frontmatter. Перевірю де
+  зберігаються скіли проєкту.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ Тепер зрозуміло — скіли зберігаються в .claude/skills/<name>/SKILL.md. Створю
+  скіл у проєкті.
+
+  Searched for 2 patterns, read 2 files, listed 2 directories (ctrl+o to expand)
+  ⎿  Loaded e2e/CLAUDE.md
+
+⏺ Тепер маю повну картину. Створю скіл у
+  .claude/skills/engineering-insights/SKILL.md.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Write(.claude/skills/engineering-insights/SKILL.md)
+  ⎿  Wrote 95 lines to .claude/skills/engineering-insights/SKILL.md
+      1 ---
+      2 name: engineering-insights
+        uring a work session to the relevant module's LEARNINGS.md. Use a
+        fter completing a non-trivial task in server/, client/, reviewer-
+        core/, e2e/, or at the project root.
+      5 ---
+      6 
+      7 # Engineering Insights
+      9 Append one or more findings to the correct `LEARNINGS.md` file fo
+        r the module where the current work happened.
+     … +103 lines (ctrl+o to expand)
+
+⏺ Перевірю що файл виглядає як слід і скіл доступний:
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Скіл створено. Ось що зроблено і як він працює:
+
+  Файл: .claude/skills/engineering-insights/SKILL.md
+
+  Що робить скіл (/engineering-insights):
+
+  1. Визначає модуль — на основі файлів, з якими працював агент, знаходить
+  правильний LEARNINGS.md (server/, client/, reviewer-core/, e2e/, або
+  кореневий)
+  2. Фільтр банальності — перед записом перевіряє кожен висновок: "чи це
+  очевидно з коду?" Якщо так — відкидає. Пишуться лише неочевидні факти:
+  приховані обмеження, виміряні значення, неочевидні залежності, воркараунди.
+  3. Класифікація по секціях — розподіляє записи між What Works, What Doesn't 
+  Work, Codebase Patterns, Tool & Library Notes, Recurring Errors & Fixes
+  4. Формат запису — [YYYY-MM-DD] <finding> — <file:line> (одна лінія,
+  append-only)
+  5. Додає через Edit — не перезаписує файл, а вставляє рядки у відповідну
+  секцію
+  6. Звітує — повідомляє що записано, що відкинуто і чому
+
+  Використання агентом в кінці сесії: після нетривіальної роботи агент викликає
+  /engineering-insights, і скіл сам вирішує куди і що писати.
+
+✻ Churned for 2m 7s
