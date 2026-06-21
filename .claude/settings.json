@@ -9,16 +9,6 @@
           }
         ]
       }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "input=$(cat); prompt=$(echo \"$input\" | jq -r '.prompt // \"\"' 2>/dev/null); if echo \"$prompt\" | grep -qE '^[[:space:]]*/export[[:space:]]*$'; then mkdir -p docs/sessions; N=$(( $(ls docs/sessions/chat.* 2>/dev/null | wc -l | tr -d ' ') + 1 )); NF=$(printf '%03d' $N); printf '{\"systemMessage\":\"Use: /export docs/sessions/chat.%s.md\",\"continue\":false}' \"$NF\"; fi"
-          }
-        ]
-      }
     ]
   }
 }
