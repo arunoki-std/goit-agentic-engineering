@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git diff --name-only HEAD 2>/dev/null | grep -q 'INSIGHTS\\.md' || echo '{\"systemMessage\": \"[ INSIGHTS ] Session ended — did you update INSIGHTS.md?\"}'"
+            "command": "MARKER=\"/tmp/.devdigest-insights-running\"; if [ -f \"$MARKER\" ]; then rm \"$MARKER\"; else touch \"$MARKER\" && printf '{\"continue\": true, \"systemMessage\": \"Invoke the engineering-insights skill.\"}'; fi"
           }
         ]
       }
