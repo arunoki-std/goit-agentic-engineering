@@ -1,4 +1,4 @@
-# LEARNINGS.md — server/ (@devdigest/api)
+# INSIGHTS.md — server/ (@devdigest/api)
 
 Fastify 5 · Drizzle ORM · Postgres/pgvector · testcontainers
 

@@ -1,7 +1,7 @@
-# LEARNINGS.md — project-level
+# INSIGHTS.md — project-level
 
 Cross-cutting findings that affect multiple modules simultaneously.
-Module-specific learnings live in each module's own LEARNINGS.md.
+Module-specific learnings live in each module's own INSIGHTS.md.
 
 Entry format: `[YYYY-MM-DD] <finding> — <file:line if applicable>`
 Rules: append-only; correct with a dated note, never overwrite; terse + actionable "cold".

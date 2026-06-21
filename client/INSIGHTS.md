@@ -1,4 +1,4 @@
-# LEARNINGS.md — client/ (@devdigest/web)
+# INSIGHTS.md — client/ (@devdigest/web)
 
 Next.js 15 App Router · TanStack Query · next-intl · recharts
 

@@ -41,9 +41,9 @@ server/clones/        git-cloned repos (git-ignored)
 
 ## Session protocol
 
-**Start of session:** Read LEARNINGS.md, then confirm with a one-sentence summary of the top 3 most relevant points before beginning work.
+**Start of session:** Read INSIGHTS.md, then confirm with a one-sentence summary of the top 3 most relevant points before beginning work.
 
-**End of session:** After work that involved a non-trivial problem, solution, or discovery, append to the relevant section in server/LEARNINGS.md. Do not skip.
+**End of session:** After work that involved a non-trivial problem, solution, or discovery, append to the relevant section in server/INSIGHTS.md. Do not skip.
 
 **Entry format:** `[YYYY-MM-DD] <finding> — <file:line>`
 **Anti-banality test:** "would this be obvious to anyone reading the code?" — if yes, don't write it.

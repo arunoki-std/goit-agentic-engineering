@@ -1,4 +1,4 @@
-# engineering-insights / LEARNINGS.md — дослідницька добірка
+# engineering-insights / INSIGHTS.md — дослідницька добірка
 
 Усі матеріали, знайдені під час роботи над скілом engineering-insights (capture
 learnings loop) для курсу. Згруповано за темами. Кожен запис: суть + що звідти
@@ -35,7 +35,7 @@ https://www.mindstudio.ai/blog/self-learning-ai-skill-system-learnings-md-wrap-u
   узгоджений формат записів; commit Learnings.md у репо.
 - **Cadence:** wrap-up після кожної сесії >30 хв з проблемою/рішенням/відкриттям;
   тривіальні правки пропускати. Quarterly review для чистки.
-- **FAQ:** wrap-up може зіпсувати базу (LLM хибно підсумовує) → LEARNINGS це
+- **FAQ:** wrap-up може зіпсувати базу (LLM хибно підсумовує) → INSIGHTS це
   чернетка під рев'ю, спот-чек за людиною; зв'язок з RAG (це «manual RAG without
   infrastructure»).
 
@@ -44,13 +44,13 @@ https://www.mindstudio.ai/blog/self-learning-ai-skill-system-learnings-md-wrap-u
 https://www.mindstudio.ai/blog/how-to-build-learnings-loop-claude-code-skills
 
 Що взяти:
-- Протокол у CLAUDE.md (Session Protocol): на старті — read LEARNINGS.md +
+- Протокол у CLAUDE.md (Session Protocol): на старті — read INSIGHTS.md +
   briefly summarize; у кінці — identify patterns/mistakes, append, do not
   overwrite (correct with dated note).
 - **Примусове активне читання:** «Before we begin, confirm you've read
-  LEARNINGS.md and summarize the top 3 most relevant points» — змушує обробку, а
+  INSIGHTS.md and summarize the top 3 most relevant points» — змушує обробку, а
   не пасивне завантаження; і це sanity-check, що файл узагалі прочитався.
-- LEARNINGS ≠ CLAUDE.md (різні призначення); LEARNINGS ≠ реплей чату (витяг
+- INSIGHTS ≠ CLAUDE.md (різні призначення); INSIGHTS ≠ реплей чату (витяг
   інсайту, не історія).
 
 ### MindStudio — Compounding Knowledge Loop in Claude Code
@@ -210,11 +210,11 @@ fixed-size system input (не компаундиться з історією).
 
 ## 6. Готова конструкція скіла для курсу (синтез усього вище)
 
-**Назва:** engineering-insights. **Пише в:** LEARNINGS.md того модуля, якого
+**Назва:** engineering-insights. **Пише в:** INSIGHTS.md того модуля, якого
 торкалась задача (apps/client, apps/server, packages/reviewer-core,
 packages/repo-intel) — у кожного свій файл. **Режим:** append-only.
 
-**Секції LEARNINGS.md** (з MindStudio, адаптовано до 4 категорій):
+**Секції INSIGHTS.md** (з MindStudio, адаптовано до 4 категорій):
 - What Works (Pattern) · What Doesn't Work (Mistake/antipattern) ·
   Codebase Patterns + Tool/Library Notes (Context) · Decisions (рішення з
   причиною) · Recurring Errors & Fixes · Session Notes (datestamped) ·
@@ -229,14 +229,14 @@ packages/repo-intel) — у кожного свій файл. **Режим:** ap
 пиши». Vague vs useful — приклади з MindStudio.
 
 **Контроль:** monthly prune (застаріле = шкідливе); вирішення конфліктів; ліміт
-~200 записів або дроблення на доменні файли; LEARNINGS — чернетка під спот-чек;
+~200 записів або дроблення на доменні файли; INSIGHTS — чернетка під спот-чек;
 git-версіонування.
 
 **Замикання петлі (CLAUDE.md):**
-- Session Context: «before work, read LEARNINGS.md; treat as high-confidence
+- Session Context: «before work, read INSIGHTS.md; treat as high-confidence
   guidance unless told otherwise».
-- End of Session: «run /engineering-insights to update LEARNINGS.md; do not skip».
-- Start-check, що форсить читання: «confirm you've read LEARNINGS.md and
+- End of Session: «run /engineering-insights to update INSIGHTS.md; do not skip».
+- Start-check, що форсить читання: «confirm you've read INSIGHTS.md and
   summarize top 3 relevant points».
 
 **Арка курсу:** L01 пишемо скіл, бачимо ефект І ненадійність автоспрацювання →

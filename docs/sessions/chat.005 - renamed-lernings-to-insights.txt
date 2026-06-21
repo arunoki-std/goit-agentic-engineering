@@ -1,0 +1,61 @@
+▗ ▗   ▖ ▖  Claude Code v2.1.183
+           Sonnet 4.6 · Claude Pro
+  ▘▘ ▝▝    ~/Projects/goit-agentic-engineering
+
+
+❯ /clear                                                                        
+
+❯ Треба в всех модулях. Файл LEARNINGS.MD  Перейменувати на INSIGHTS.MD Також   
+  перейменувати всі посилання на цей файл. Зі скіла engineering-insights якщо   
+  посилання будуть знайдені в **agents.md**, то там теж треба змінити.          
+
+⏺ Let me find all LEARNINGS.md files and references to them across the project.
+
+  Searched for 4 patterns (ctrl+o to expand)
+
+⏺ No agents.md found. Now I'll rename all 5 LEARNINGS.md files and update all
+  references.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Now update all references in the files that referenced LEARNINGS.md:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Verify no remaining references:
+
+  Searched for 1 pattern (ctrl+o to expand)
+  ⎿  1 skill available
+
+⏺ There are still references inside the INSIGHTS.md files themselves and in the
+  research article. Let me fix those.
+
+  Searched for 1 pattern, read 1 file, ran 1 shell command (ctrl+o to expand)
+
+⏺ These are conceptual mentions of "LEARNINGS" as a system name in the article
+  (not file paths). I'll update them to "INSIGHTS" to be consistent.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+⏺ The remaining references are all in docs/sessions/*.txt — historical chat
+  transcripts that are accurate records of what happened at the time. Those
+  should stay as-is.
+
+  Done. Summary of changes:
+
+  - 5 files renamed: LEARNINGS.md → INSIGHTS.md in root, server/, client/,
+  reviewer-core/, e2e/
+  - References updated in: all 5 CLAUDE.md files,
+  .claude/skills/engineering-insights/SKILL.md,
+  docs/articles/engineering-insights-research.md, and inside the INSIGHTS.md
+  files themselves
+  - Left untouched: docs/sessions/*.txt — historical chat logs, accurate as
+  written
+
+✻ Sautéed for 1m 7s
+
+❯ дякую                                                                         
+
+⏺ Будь ласка!
+
+✻ Cogitated for 2s

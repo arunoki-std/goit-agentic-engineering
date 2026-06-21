@@ -1,4 +1,4 @@
-# LEARNINGS.md — reviewer-core/ (@devdigest/reviewer-core)
+# INSIGHTS.md — reviewer-core/ (@devdigest/reviewer-core)
 
 Pure review engine · injected LLMProvider · no I/O
 

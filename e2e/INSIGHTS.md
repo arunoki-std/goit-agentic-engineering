@@ -1,4 +1,4 @@
-# LEARNINGS.md — e2e/ (@devdigest/e2e)
+# INSIGHTS.md — e2e/ (@devdigest/e2e)
 
 agent-browser CLI · deterministic flows · no LLM · hermetic runner
 

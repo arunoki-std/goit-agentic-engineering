@@ -1,24 +1,24 @@
 ---
 name: engineering-insights
-description: Append non-obvious engineering findings discovered during a work session to the relevant module's LEARNINGS.md. Use after completing a non-trivial task in server/, client/, reviewer-core/, e2e/, or at the project root.
+description: Append non-obvious engineering findings discovered during a work session to the relevant module's INSIGHTS.md. Use after completing a non-trivial task in server/, client/, reviewer-core/, e2e/, or at the project root.
 allowed-tools: Read, Edit, Bash(date:*)
 ---
 
 # Engineering Insights
 
-Append one or more findings to the correct `LEARNINGS.md` file for the module where the current work happened.
+Append one or more findings to the correct `INSIGHTS.md` file for the module where the current work happened.
 
-## Step 1 — Determine the target LEARNINGS.md
+## Step 1 — Determine the target INSIGHTS.md
 
 Identify the module from the files you worked on during this session:
 
 | Worked in… | Target file |
 |------------|-------------|
-| `server/` | `server/LEARNINGS.md` |
-| `client/` | `client/LEARNINGS.md` |
-| `reviewer-core/` | `reviewer-core/LEARNINGS.md` |
-| `e2e/` | `e2e/LEARNINGS.md` |
-| multiple modules / project-wide | `LEARNINGS.md` (root) |
+| `server/` | `server/INSIGHTS.md` |
+| `client/` | `client/INSIGHTS.md` |
+| `reviewer-core/` | `reviewer-core/INSIGHTS.md` |
+| `e2e/` | `e2e/INSIGHTS.md` |
+| multiple modules / project-wide | `INSIGHTS.md` (root) |
 
 If the user explicitly named a different module, use that target.
 
@@ -36,7 +36,7 @@ For each candidate insight, ask: **"Would this be obvious to anyone reading the 
 
 ## Step 3 — Classify each insight into a section
 
-Read the target `LEARNINGS.md` to find the correct section heading:
+Read the target `INSIGHTS.md` to find the correct section heading:
 
 - **What Works** — approaches and solutions that proved correct
 - **What Doesn't Work** — dead ends, anti-patterns, things that silently break
@@ -66,7 +66,7 @@ Rules:
 
 ## Step 5 — Append to the file
 
-Read the target `LEARNINGS.md`.
+Read the target `INSIGHTS.md`.
 
 Find the matching section heading (e.g. `## What Doesn't Work`).
 Append the entry on a new line after the last existing entry in that section (before the next `##` heading or end of file).
@@ -84,12 +84,12 @@ Report to the user:
 
 ---
 
-## Quick reference — LEARNINGS.md locations
+## Quick reference — INSIGHTS.md locations
 
 ```
-LEARNINGS.md                  ← cross-cutting / project-wide
-server/LEARNINGS.md           ← @devdigest/api (Fastify · Drizzle · Postgres)
-client/LEARNINGS.md           ← @devdigest/web (Next.js · TanStack Query)
-reviewer-core/LEARNINGS.md    ← @devdigest/reviewer-core (pure engine)
-e2e/LEARNINGS.md              ← @devdigest/e2e (agent-browser flows)
+INSIGHTS.md                  ← cross-cutting / project-wide
+server/INSIGHTS.md           ← @devdigest/api (Fastify · Drizzle · Postgres)
+client/INSIGHTS.md           ← @devdigest/web (Next.js · TanStack Query)
+reviewer-core/INSIGHTS.md    ← @devdigest/reviewer-core (pure engine)
+e2e/INSIGHTS.md              ← @devdigest/e2e (agent-browser flows)
 ```
