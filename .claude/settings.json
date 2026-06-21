@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "MARKER=\"/tmp/.devdigest-insights-running\"; if [ -f \"$MARKER\" ]; then rm \"$MARKER\"; else touch \"$MARKER\" && printf '{\"continue\": true, \"systemMessage\": \"Invoke the engineering-insights skill.\"}'; fi"
+            "command": "if grep -q '\"stop_hook_active\"[[:space:]]*:[[:space:]]*true'; then exit 0; else printf '{\"systemMessage\":\"[INSIGHTS] Running engineering-insights check...\",\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"additionalContext\":\"Use the engineering-insights skill now to decide whether this session produced any non-obvious engineering insight worth appending to INSIGHTS.md.\"}}'; fi"
           }
         ]
       }
