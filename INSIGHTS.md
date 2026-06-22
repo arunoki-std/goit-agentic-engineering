@@ -34,6 +34,7 @@ Prune quarterly (stale entries are noise, not signal).
 ## Recurring Errors & Fixes
 
 <!-- Повторювані помилки + конкретний фікс (щоб не повторювати) -->
+[2026-06-23] `git add client/src/app/agents/[id]/page.tsx` падає в zsh з "no matches found" — `[id]`/`[repoId]` у Next.js dynamic-route директоріях zsh розпізнає як glob character class; фікс: цитувати шлях у лапках і запускати з `cd <repo>` (не `git -C`): `cd repo && git add "client/src/app/agents/[id]/page.tsx"`
 [2026-06-22] skill-creator `run_loop.py` requires Python ≥ 3.10 — `str | None` union syntax in improve_description.py:20 throws `TypeError: unsupported operand type(s) for |` on macOS system Python 3.9.6; fix: `brew install python@3.12` and use `python3.12 -m scripts.run_loop` — skill-creator/scripts/improve_description.py:20
 [2026-06-22] skill-creator docs use `python -m scripts.*` but macOS ships only `python3`; always use `python3.12 -m scripts.*` (not `python3` alone — that resolves to 3.9 on stock macOS) — skill-creator/scripts/
 
