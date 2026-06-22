@@ -13,6 +13,7 @@ Prune quarterly (stale entries are noise, not signal).
 
 <!-- Підходи й рішення, що спрацювали -->
 [2026-06-22] Multi-tool agent instructions: put content in AGENTS.md, keep CLAUDE.md as a one-liner `@AGENTS.md` — Claude imports it transparently, Codex/Cursor/Gemini read AGENTS.md directly; one file to maintain across all 5 packages
+[2026-06-22] anthropics/skills README suggests `/plugin marketplace` install, but copying skill folder directly to `.claude/skills/` works without plugin system — used to install skill-creator
 
 ## What Doesn't Work
 
@@ -26,6 +27,7 @@ Prune quarterly (stale entries are noise, not signal).
 ## Tool & Library Notes
 
 <!-- Квірки залежностей, версійні сюрпризи, нестандартна поведінка -->
+[2026-06-22] Отримати один піддиректорій з GitHub без клонування всього репо: `git clone --depth=1 --filter=blob:none --sparse <url> /tmp/dir && cd /tmp/dir && git sparse-checkout set <subpath>`
 
 ## Recurring Errors & Fixes
 
