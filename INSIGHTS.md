@@ -28,6 +28,7 @@ Prune quarterly (stale entries are noise, not signal).
 
 <!-- Квірки залежностей, версійні сюрпризи, нестандартна поведінка -->
 [2026-06-22] Отримати один піддиректорій з GitHub без клонування всього репо: `git clone --depth=1 --filter=blob:none --sparse <url> /tmp/dir && cd /tmp/dir && git sparse-checkout set <subpath>`
+[2026-06-22] skill-creator workspace (`<skill>-workspace/`) є sibling до skill dir і не згадується в SKILL.md — це development artifact eval-циклу, безпечно видаляти після завершення; Claude Code завантажує лише вміст самої skill dir
 
 ## Recurring Errors & Fixes
 

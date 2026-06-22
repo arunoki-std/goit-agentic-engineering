@@ -16,11 +16,14 @@ Prune quarterly.
 
 <!-- Глухі кути й антипатерни — найцінніша секція -->
 <!-- Приклад: [2026-06-19] fetch() напряму в компоненті — ламає кеш TanStack Query; завжди через src/lib/hooks/ -->
+[2026-06-22] Передавати фільтр-параметр у queryKey TanStack Query = окремий cache entry на кожне значення → ламає deduplication; фільтрувати client-side у helpers.ts на вже отриманих даних — AgentsListView/helpers.ts
+[2026-06-22] `useSearchParams` для фільтра — тільки якщо значення має виживати після рефреш або бути shareable; якщо ні — `useState`; прецедент URL-стану: src/app/repos/[repoId]/pulls/page.tsx, без URL-стану: agents list
 
 ## Codebase Patterns
 
 <!-- Non-default конвенції client/ -->
 <!-- Приклад: [2026-06-19] Сторінки тонкі — вся логіка в _components/<Name>/; не класти бізнес-логіку в page.tsx -->
+[2026-06-22] RunTraceDrawer — канонічний прецедент вкладених _components/ (TraceBody, FindingsSection, PromptBlock тощо); орієнтуватись на нього при розбитті великих компонентів — src/app/repos/[repoId]/pulls/[number]/_components/RunTraceDrawer/
 
 ## Tool & Library Notes
 
