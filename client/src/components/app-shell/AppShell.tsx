@@ -5,7 +5,8 @@
 
 import React from "react";
 import { AppFrame, CommandPalette, ShortcutsHelp, type Crumb } from "@devdigest/ui";
-import { useGlobalShortcuts, useShellCommands, useShellContext } from "./hooks";
+import { ConfirmModal } from "../confirm-modal";
+import { useGlobalShortcuts, useShellCommands, useShellContext, useConfirmRemoveRepo } from "./hooks";
 
 export function AppShell({ children, crumb }: { children: React.ReactNode; crumb?: Crumb[] }) {
   const [paletteOpen, setPaletteOpen] = React.useState(false);
@@ -15,9 +16,10 @@ export function AppShell({ children, crumb }: { children: React.ReactNode; crumb
   const openHelp = React.useCallback(() => setHelpOpen(true), []);
   const closeHelp = React.useCallback(() => setHelpOpen(false), []);
 
+  const removeRepo = useConfirmRemoveRepo();
   useGlobalShortcuts({ onOpenPalette: openPalette, onOpenHelp: openHelp });
   const commands = useShellCommands();
-  const ctx = useShellContext({ onOpenCommandPalette: openPalette });
+  const ctx = useShellContext({ onOpenCommandPalette: openPalette, onRequestRemoveRepo: removeRepo.request });
 
   return (
     <>
@@ -26,6 +28,15 @@ export function AppShell({ children, crumb }: { children: React.ReactNode; crumb
       </AppFrame>
       <CommandPalette open={paletteOpen} commands={commands} onClose={closePalette} />
       <ShortcutsHelp open={helpOpen} onClose={closeHelp} />
+      {removeRepo.pending && (
+        <ConfirmModal
+          title="Remove repository"
+          body={`Remove "${removeRepo.pending.name}" from DevDigest? The repository and its data will be deleted.`}
+          confirmLabel="Remove"
+          onConfirm={removeRepo.confirm}
+          onCancel={removeRepo.cancel}
+        />
+      )}
     </>
   );
 }

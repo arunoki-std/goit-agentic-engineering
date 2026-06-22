@@ -10,7 +10,8 @@ import { Icon, Badge } from "@devdigest/ui";
 import type { ReviewRecord, Verdict, Severity } from "@devdigest/shared";
 import { FindingsPanel } from "../FindingsPanel";
 import { VerdictBanner } from "../VerdictBanner";
-import { useDeleteReview } from "../../../../../../../lib/hooks/reviews";
+import { useDeleteReview } from "@/lib/hooks/reviews";
+import { ConfirmModal } from "@/components/confirm-modal";
 
 const VERDICT_COLOR: Record<string, string> = {
   request_changes: "var(--crit)",
@@ -45,6 +46,7 @@ export function ReviewRunAccordion({
   filterSeverity?: Severity | null;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     if (review.run_id && review.run_id === targetRunId) {
@@ -59,6 +61,16 @@ export function ReviewRunAccordion({
   const verdictColor = review.verdict ? VERDICT_COLOR[review.verdict] ?? "var(--text-muted)" : "var(--text-muted)";
 
   return (
+    <>
+    {confirmDelete && (
+      <ConfirmModal
+        title="Delete review run"
+        body={`Delete this "${review.agent_name ?? "agent"}" review run and its findings?`}
+        confirmLabel="Delete"
+        onConfirm={() => { setConfirmDelete(false); del.mutate(review.id); }}
+        onCancel={() => setConfirmDelete(false)}
+      />
+    )}
     <div
       ref={rootRef}
       id={review.run_id ? `review-run-${review.run_id}` : undefined}
@@ -111,9 +123,7 @@ export function ReviewRunAccordion({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (window.confirm(`Delete this "${review.agent_name ?? "agent"}" review run and its findings?`)) {
-              del.mutate(review.id);
-            }
+            setConfirmDelete(true);
           }}
           disabled={del.isPending}
           title="Delete this review run"
@@ -159,6 +169,7 @@ export function ReviewRunAccordion({
         </div>
       )}
     </div>
+    </>
   );
 }
 

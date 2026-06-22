@@ -11,6 +11,8 @@ Prune quarterly.
 ## What Works
 
 <!-- Підходи й рішення, що спрацювали в client/ -->
+[2026-06-23] Коли hook викликає `window.confirm()`, перенести підтвердження у консьюмер-компонент: hook отримує `onRequest(id, name)` callback, всередині hook — `request/confirm/cancel` трійця стану, компонент рендерить `<ConfirmModal>` — так JSX не потрапляє у hook; прецедент: useConfirmRemoveRepo() + AppShell.tsx — src/components/app-shell/hooks/useShellContext.ts
+[2026-06-23] `Modal` вже є в `@devdigest/ui` (vendor/ui/kit/Modal.tsx) — реекспортується через `export * from "./kit"`; не потрібно писати власний dialog — src/vendor/ui/kit/Modal.tsx
 
 ## What Doesn't Work
 
@@ -28,11 +30,14 @@ Prune quarterly.
 ## Tool & Library Notes
 
 <!-- Квірки Next.js 15, TanStack Query, next-intl -->
+[2026-06-23] recharts виводить `width(0) and height(0) of chart should be greater than 0` у stderr при кожному запуску `pnpm test` — це jsdom-шум (відсутній layout engine), не помилка; не витрачати час на розслідування — src/test/smoke.test.tsx
 
 ## Recurring Errors & Fixes
 
 <!-- Повторювані помилки + фікс -->
 <!-- Приклад: [2026-06-19] Контракти розсинхронізувались — src/vendor/shared/ ≠ server/src/vendor/shared/ -->
+[2026-06-23] Шлях до `messages/` у тестах: директорія `messages/` — на рівні `client/`, а НЕ `client/src/`; з `src/app/repos/[repoId]/pulls/_components/FilterBar/` потрібно 7 `../` (а не 6) щоб дістатись до `client/messages/` — FilterBar.test.tsx:4
+[2026-06-23] `@testing-library/user-event` не встановлено у client/; використовувати `fireEvent` з `@testing-library/react` — перевірити перед написанням нових тестів: `ls client/node_modules/@testing-library/`
 
 ## Session Notes
 
