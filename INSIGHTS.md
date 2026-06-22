@@ -12,10 +12,12 @@ Prune quarterly (stale entries are noise, not signal).
 ## What Works
 
 <!-- Підходи й рішення, що спрацювали -->
+[2026-06-22] Multi-tool agent instructions: put content in AGENTS.md, keep CLAUDE.md as a one-liner `@AGENTS.md` — Claude imports it transparently, Codex/Cursor/Gemini read AGENTS.md directly; one file to maintain across all 5 packages
 
 ## What Doesn't Work
 
 <!-- Глухі кути й антипатерни — найцінніша секція, заповнюй першою -->
+[2026-06-22] Renaming CLAUDE.md → AGENTS.md silently breaks Claude Code — it reads only CLAUDE.md, not AGENTS.md; no warning is given
 
 ## Codebase Patterns
 
