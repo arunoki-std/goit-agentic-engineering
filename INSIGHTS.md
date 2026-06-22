@@ -19,6 +19,7 @@ Prune quarterly (stale entries are noise, not signal).
 
 <!-- Глухі кути й антипатерни — найцінніша секція, заповнюй першою -->
 [2026-06-22] Renaming CLAUDE.md → AGENTS.md silently breaks Claude Code — it reads only CLAUDE.md, not AGENTS.md; no warning is given
+[2026-06-22] When creating a new skill, Claude bypassed `skill-creator` and wrote SKILL.md by hand — `skill-creator` should run first: it generates eval cases and measures trigger quality in the description; writing manually skips that feedback loop — .claude/skills/
 
 ## Codebase Patterns
 

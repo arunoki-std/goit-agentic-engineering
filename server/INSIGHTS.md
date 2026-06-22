@@ -21,10 +21,12 @@ Prune quarterly.
 
 <!-- Non-default конвенції server/ -->
 <!-- Приклад: [2026-06-19] Всі секрети через SecretsProvider, не AppConfig — src/adapters/secrets/local.ts -->
+[2026-06-22] Modules follow Sliced Onion Architecture — Onion rings live *inside* each modules/<name>/ slice, not as global layer folders; reorganizing into src/controllers/ or src/services/ would break this intentional pattern — src/modules/
 
 ## Tool & Library Notes
 
 <!-- Квірки Fastify 5, Drizzle, pgvector, testcontainers -->
+[2026-06-22] Drizzle: the Onion layer boundary is `db/schema/*` imports, not the `db` client itself; `container.db` may be passed into a repository constructor, but only repository.ts may import table definitions — db/schema/
 
 ## Recurring Errors & Fixes
 
