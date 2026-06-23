@@ -20,6 +20,8 @@ Prune quarterly.
 <!-- Приклад: [2026-06-19] fetch() напряму в компоненті — ламає кеш TanStack Query; завжди через src/lib/hooks/ -->
 [2026-06-22] Передавати фільтр-параметр у queryKey TanStack Query = окремий cache entry на кожне значення → ламає deduplication; фільтрувати client-side у helpers.ts на вже отриманих даних — AgentsListView/helpers.ts
 [2026-06-22] `useSearchParams` для фільтра — тільки якщо значення має виживати після рефреш або бути shareable; якщо ні — `useState`; прецедент URL-стану: src/app/repos/[repoId]/pulls/page.tsx, без URL-стану: agents list
+[2026-06-23] Omitting `AppShell` from a page view silently renders without the left nav sidebar — no error, just missing chrome; every full-page view needs `<AppShell crumb={…}>` as the outermost element — src/app/skills/_components/SkillsView/SkillsView.tsx
+[2026-06-23] `height: "100%"` fails for full-height two-panel layouts — AppFrame's `<main>` has `overflow: "auto"` which lets it grow to content, breaking height inheritance; fix: `height: "calc(100vh - 52px)"` (52 = topbar) as used in AgentEditorPage/styles.ts:4
 
 ## Codebase Patterns
 

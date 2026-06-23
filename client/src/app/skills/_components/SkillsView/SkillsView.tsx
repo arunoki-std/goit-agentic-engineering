@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Button, Dropdown, EmptyState, ErrorState, Icon, Skeleton } from "@devdigest/ui";
+import { AppShell } from "@/components/app-shell";
 import { useSkills, useUpdateSkill } from "@/lib/hooks/skills";
 import { SkillCard } from "../SkillCard";
 import { SkillDetailPanel } from "../SkillDetailPanel";
@@ -38,7 +39,8 @@ export function SkillsView() {
   const selectedSkill = skills?.find((s) => s.id === selectedId) ?? null;
 
   return (
-    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+    <AppShell crumb={[{ label: "Skills Lab" }, { label: "Skills" }]}>
+    <div style={{ display: "flex", height: "calc(100vh - 52px)", overflow: "hidden" }}>
       {/* Left panel */}
       <div
         style={{
@@ -47,7 +49,6 @@ export function SkillsView() {
           borderRight: "1px solid var(--border)",
           display: "flex",
           flexDirection: "column",
-          height: "100%",
           overflow: "hidden",
         }}
       >
@@ -172,5 +173,6 @@ export function SkillsView() {
         />
       )}
     </div>
+    </AppShell>
   );
 }
