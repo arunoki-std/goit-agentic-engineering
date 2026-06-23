@@ -20,6 +20,7 @@ Prune quarterly (stale entries are noise, not signal).
 <!-- Глухі кути й антипатерни — найцінніша секція, заповнюй першою -->
 [2026-06-22] Renaming CLAUDE.md → AGENTS.md silently breaks Claude Code — it reads only CLAUDE.md, not AGENTS.md; no warning is given
 [2026-06-22] When creating a new skill, Claude bypassed `skill-creator` and wrote SKILL.md by hand — `skill-creator` should run first: it generates eval cases and measures trigger quality in the description; writing manually skips that feedback loop — .claude/skills/
+[2026-06-23] skill-creator `aggregate_benchmark.py` silently produces empty benchmark.json (delta: +0.00, all zeros) when grading.json sits directly in `with_skill/` — script uses `glob("run-*")` and expects `with_skill/run-1/grading.json`; no error or warning is printed — .claude/skills/skill-creator/scripts/aggregate_benchmark.py:106
 
 ## Codebase Patterns
 
@@ -37,6 +38,7 @@ Prune quarterly (stale entries are noise, not signal).
 [2026-06-23] `git add client/src/app/agents/[id]/page.tsx` падає в zsh з "no matches found" — `[id]`/`[repoId]` у Next.js dynamic-route директоріях zsh розпізнає як glob character class; фікс: цитувати шлях у лапках і запускати з `cd <repo>` (не `git -C`): `cd repo && git add "client/src/app/agents/[id]/page.tsx"`
 [2026-06-22] skill-creator `run_loop.py` requires Python ≥ 3.10 — `str | None` union syntax in improve_description.py:20 throws `TypeError: unsupported operand type(s) for |` on macOS system Python 3.9.6; fix: `brew install python@3.12` and use `python3.12 -m scripts.run_loop` — skill-creator/scripts/improve_description.py:20
 [2026-06-22] skill-creator docs use `python -m scripts.*` but macOS ships only `python3`; always use `python3.12 -m scripts.*` (not `python3` alone — that resolves to 3.9 on stock macOS) — skill-creator/scripts/
+[2026-06-23] `eval-viewer/generate_review.py` also requires Python ≥ 3.10 (`dict | None` syntax at line 85) — not in scripts/, so use `python3.12 eval-viewer/generate_review.py <workspace>` directly (not the -m form) — .claude/skills/skill-creator/eval-viewer/generate_review.py:85
 
 ## Session Notes
 

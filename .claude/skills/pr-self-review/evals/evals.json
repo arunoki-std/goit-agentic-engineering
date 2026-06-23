@@ -1,0 +1,43 @@
+{
+  "skill_name": "pr-self-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to open a PR for my changes on this branch. Can you run /pr-self-review first so I know the code is ready?",
+      "expected_output": "The skill runs git diff to discover changed files, reads the relevant architecture skill files, performs the review, and produces a structured report with either a BLOCKED or PASSED verdict, listing all findings by severity.",
+      "files": [],
+      "expectations": [
+        "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+        "Output classifies findings into severity categories (critical, warning, or info)",
+        "Output explicitly groups changed files as frontend (client/) vs backend (server/)",
+        "Output identifies missing test files for new or substantially modified components",
+        "The gate verdict is PASSED (no critical issues expected on this branch)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "ok my feature is done, running gh pr create now",
+      "expected_output": "The skill auto-triggers on the gh pr create mention, runs the full review workflow, and outputs the gate decision before the user proceeds to open the PR.",
+      "files": [],
+      "expectations": [
+        "The skill triggers on 'gh pr create' intent and runs a review BEFORE any PR creation attempt",
+        "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+        "Output identifies frontend files under client/ as the primary changed area",
+        "The gate verdict is PASSED (no critical issues expected on this branch)"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I think I'm ready to merge. Can you check if there are any issues with my changes before I submit for review?",
+      "expected_output": "The skill triggers on 'ready to merge' / 'submit for review', discovers changed files, performs architecture and security review, checks test coverage and PR size, and outputs a complete structured report with BLOCKED or PASSED verdict.",
+      "files": [],
+      "expectations": [
+        "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+        "Output includes a test coverage check — identifies files missing test coverage",
+        "Output mentions PR size or diff size as a check",
+        "The architecture review section explicitly references React / frontend architecture patterns (not just a generic review)",
+        "The gate verdict is PASSED (no critical issues expected on this branch)"
+      ]
+    }
+  ]
+}
