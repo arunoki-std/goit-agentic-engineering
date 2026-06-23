@@ -31,6 +31,7 @@ Prune quarterly.
 
 <!-- Квірки Next.js 15, TanStack Query, next-intl -->
 [2026-06-23] recharts виводить `width(0) and height(0) of chart should be greater than 0` у stderr при кожному запуску `pnpm test` — це jsdom-шум (відсутній layout engine), не помилка; не витрачати час на розслідування — src/test/smoke.test.tsx
+[2026-06-23] Vendored `Drawer` (vendor/ui/kit/Drawer.tsx:57) internally applies `padding: 24` to its children container — full-width children (tab bars, dividers) must use a `margin: "-24px"` wrapper to break out; there's no `noPad` prop — src/vendor/ui/kit/Drawer.tsx
 
 ## Recurring Errors & Fixes
 
@@ -38,6 +39,8 @@ Prune quarterly.
 <!-- Приклад: [2026-06-19] Контракти розсинхронізувались — src/vendor/shared/ ≠ server/src/vendor/shared/ -->
 [2026-06-23] Шлях до `messages/` у тестах: директорія `messages/` — на рівні `client/`, а НЕ `client/src/`; з `src/app/repos/[repoId]/pulls/_components/FilterBar/` потрібно 7 `../` (а не 6) щоб дістатись до `client/messages/` — FilterBar.test.tsx:4
 [2026-06-23] `@testing-library/user-event` не встановлено у client/; використовувати `fireEvent` з `@testing-library/react` — перевірити перед написанням нових тестів: `ls client/node_modules/@testing-library/`
+[2026-06-23] `FormField` (vendor/ui/kit/FormField.tsx) приймає `hint` але НЕ `style` — обертай у `<div style={…}>` для margin; `TextInput` теж НЕ приймає `hint` — переноси hint у `FormField hint=` prop — src/vendor/ui/kit/FormField.tsx
+[2026-06-23] Vendored icon set — subset of Lucide; відсутні `BarChart2` (є `BarChart`), `ChevronUp` (є `ArrowUp`) — TypeScript ловить, але не каже яку альтернативу брати; перевіряй vendor/ui/icons.tsx перед використанням — src/vendor/ui/icons.tsx
 
 ## Session Notes
 

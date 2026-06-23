@@ -16,6 +16,7 @@ Prune quarterly.
 
 <!-- Глухі кути й антипатерни — найцінніша секція -->
 <!-- Приклад: [2026-06-19] Не викликай adapter напряму в service — ламає mock у тестах; завжди через container.ts -->
+[2026-06-23] Fastify: реєстрація `/:id` перед статичними маршрутами (`/community`, `/parse-import`, `/import-url`) — статичні маршрути ніколи не спрацьовують (тихо відповідає `:id` handler з невалідним UUID); завжди реєструй static routes ПЕРШИМИ — src/modules/skills/routes.ts:1
 
 ## Codebase Patterns
 
@@ -32,6 +33,7 @@ Prune quarterly.
 
 <!-- Повторювані помилки + фікс -->
 <!-- Приклад: [2026-06-19] "relation does not exist" → міграції не були застосовані; cd server && pnpm db:migrate -->
+[2026-06-23] `app.httpErrors.badRequest()` — `@fastify/sensible` не зареєстровано в цьому додатку; виклик падає зі "Property 'httpErrors' does not exist"; завжди кидай `new AppError(code, msg, statusCode)` з `platform/errors.ts` — src/modules/skills/routes.ts
 
 ## Session Notes
 

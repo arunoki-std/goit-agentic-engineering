@@ -220,6 +220,152 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     if (!existing) await db.insert(t.agents).values(a);
   }
 
+  // ---- skills + Test Quality Reviewer agent ----
+  const seedSkills: Array<typeof t.skills.$inferInsert & { _name: string }> = [
+    {
+      _name: 'test-branch-coverage',
+      workspaceId,
+      name: 'test-branch-coverage',
+      description: 'Checks that new branches and conditions have corresponding test assertions.',
+      type: 'rubric',
+      source: 'manual',
+      enabled: true,
+      version: 1,
+      body: `# Test Branch Coverage
+
+For every new conditional branch introduced in this diff (if/else, switch cases, ternary,
+early returns, try/catch, loops), verify that at least one test assertion exercises that branch.
+
+Flag:
+- A new code path that has zero test coverage.
+- Tests that only exercise the happy path when the diff clearly introduces an error case.
+
+Report as: SEVERITY WARNING, category "test-quality".
+Cite the uncovered branch at file:line and name the missing scenario.`,
+    },
+    {
+      _name: 'no-excessive-mocking',
+      workspaceId,
+      name: 'no-excessive-mocking',
+      description: 'Flags when the majority of a test\'s setup is mocking internals rather than behavior.',
+      type: 'convention',
+      source: 'manual',
+      enabled: true,
+      version: 1,
+      body: `# No Excessive Mocking
+
+A test that mocks more than 50% of its collaborators tests the mock configuration,
+not the real behavior. Flag tests where:
+
+- More than half the arrange phase is setting up mocks.
+- Internal implementation details (private methods, internal modules) are mocked instead of
+  real inputs/outputs.
+- A mock is set up but never asserted on (zombie mock).
+
+Suggest replacing with a real call, an in-memory stub, or a restructure that tests observable output.
+Report as: SEVERITY INFO, category "test-quality".`,
+    },
+    {
+      _name: 'corner-cases-required',
+      workspaceId,
+      name: 'corner-cases-required',
+      description: 'Checks that null, empty, and boundary inputs are covered in test assertions.',
+      type: 'rubric',
+      source: 'manual',
+      enabled: true,
+      version: 1,
+      body: `# Corner Cases Required
+
+For every function or method modified in this diff, verify that the test suite covers:
+
+- null / undefined inputs where the type allows.
+- Empty collection ([], {}, "") where the type allows.
+- Boundary values: 0, -1, MAX, empty string, whitespace-only strings.
+- Invalid types (if runtime validation is the responsibility of the unit).
+
+Flag any function where only "normal" inputs appear in assertions.
+Report as: SEVERITY WARNING, category "test-quality".`,
+    },
+    {
+      _name: 'no-flaky-patterns',
+      workspaceId,
+      name: 'no-flaky-patterns',
+      description: 'Flags setTimeout, fixed sleeps, and ordering-dependent assertions that cause flaky tests.',
+      type: 'convention',
+      source: 'manual',
+      enabled: true,
+      version: 1,
+      body: `# No Flaky Test Patterns
+
+Flag any of the following patterns in test code introduced by this diff:
+
+- \`setTimeout\`, \`setInterval\`, or \`sleep\` / \`delay\` used to wait for async operations
+  instead of \`await\` or proper synchronization.
+- Assertions that depend on insertion order from a collection that has no guaranteed order
+  (e.g., asserting index 0 of a Set or object keys).
+- Snapshot tests that include timestamps, UUIDs, or other volatile values.
+- Tests that share mutable state across \`it\` blocks without reset.
+
+Report as: SEVERITY WARNING, category "test-quality".
+Suggest the deterministic alternative.`,
+    },
+  ];
+
+  const skillIdMap = new Map<string, string>();
+  for (const { _name, ...skill } of seedSkills) {
+    let [existing] = await db
+      .select()
+      .from(t.skills)
+      .where(and(eq(t.skills.workspaceId, workspaceId), eq(t.skills.name, skill.name)));
+    if (!existing) {
+      [existing] = await db.insert(t.skills).values(skill).returning();
+      // snapshot version 1
+      await db
+        .insert(t.skillVersions)
+        .values({ skillId: existing!.id, version: 1, body: skill.body })
+        .onConflictDoNothing();
+    }
+    skillIdMap.set(_name, existing!.id);
+  }
+
+  // Test Quality Reviewer agent linked to all 4 skills
+  const TQR_NAME = 'Test Quality Reviewer';
+  let [tqrAgent] = await db
+    .select()
+    .from(t.agents)
+    .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, TQR_NAME)));
+  if (!tqrAgent) {
+    [tqrAgent] = await db
+      .insert(t.agents)
+      .values({
+        workspaceId,
+        name: TQR_NAME,
+        description: 'Checks test quality: branch coverage, corner cases, excessive mocking, and flaky patterns.',
+        provider: DEFAULT_PROVIDER,
+        model: DEFAULT_MODEL,
+        systemPrompt:
+          'You are a test quality reviewer. Examine only the test files in this diff. ' +
+          'Flag uncovered branches, missing corner cases, excessive mocking, and flaky patterns. ' +
+          'Return at most 5 findings ranked by severity. Cite exact file:line.',
+        enabled: true,
+        version: 1,
+        createdBy: userId,
+      })
+      .returning();
+  }
+
+  // Link all 4 skills to the TQR agent (idempotent)
+  const skillOrder = ['test-branch-coverage', 'no-excessive-mocking', 'corner-cases-required', 'no-flaky-patterns'];
+  for (let i = 0; i < skillOrder.length; i++) {
+    const skillId = skillIdMap.get(skillOrder[i]!);
+    if (skillId && tqrAgent) {
+      await db
+        .insert(t.agentSkills)
+        .values({ agentId: tqrAgent.id, skillId, order: i })
+        .onConflictDoNothing();
+    }
+  }
+
   return { workspaceId, userId };
 }
 

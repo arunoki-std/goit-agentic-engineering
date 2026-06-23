@@ -183,6 +183,12 @@ export class ReviewRunExecutor {
 
       const task = taskLine(pull) + rankNote;
 
+      // Load enabled skills for this agent (ordered by agent_skills.order).
+      const skillBodies = await this.container.skillsRepo.enabledBodiesForAgent(agent.id);
+      if (skillBodies.length > 0) {
+        runLog.info(`Skills: ${skillBodies.length} skill(s) attached`);
+      }
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -192,6 +198,7 @@ export class ReviewRunExecutor {
         model: agent.model,
         diff,
         llm,
+        ...(skillBodies.length > 0 ? { skills: skillBodies } : {}),
         // Per-agent review strategy (configured in the Agent editor); falls back
         // to the studio default. single-pass = whole diff in one call.
         strategy: agent.strategy ?? REVIEW_STRATEGY,

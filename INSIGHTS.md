@@ -44,6 +44,10 @@ Prune quarterly (stale entries are noise, not signal).
 ## Session Notes
 
 <!-- Датовані підсумки сесій — що зроблено, що відкрито -->
+[2026-06-23] Implemented full Skills feature (server CRUD + client UI): static routes in Fastify MUST be registered before `:id` wildcards or community/parse-import/import-url routes will shadow to `:id` handler — `routes.ts` registers them first — server/src/modules/skills/routes.ts:1
+[2026-06-23] `FormField` from @devdigest/ui accepts `hint` but NOT `style` — wrap in `<div style={…}>` for margin; `TextInput` does NOT accept `hint` — put hint on the wrapping `FormField` instead — client/src/vendor/ui/kit/FormField.tsx
+[2026-06-23] Drawer component's children area already applies `padding: 24` — use `margin: "-24px"` on a child wrapper to break full-width elements (tab bars) out of that padding — client/src/vendor/ui/kit/Drawer.tsx:57
+[2026-06-23] Array destructuring swap `[a, b] = [b, a]` triggers TS "possibly undefined" with noUncheckedIndexedAccess; use temp var: `const tmp = arr[i]!; arr[i] = arr[j]!; arr[j] = tmp;` — client/src/app/agents/[id]/_components/AgentEditor/_components/SkillsTab/SkillsTab.tsx
 
 ## Open Questions
 
