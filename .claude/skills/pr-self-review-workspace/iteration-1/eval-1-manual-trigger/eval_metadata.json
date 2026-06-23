@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "eval_name": "manual-trigger",
+  "prompt": "I want to open a PR for my changes on this branch. Can you run /pr-self-review first so I know the code is ready?",
+  "assertions": [
+    "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+    "Output classifies findings into severity categories (critical, warning, or info)",
+    "Output explicitly groups changed files as frontend (client/) vs backend (server/)",
+    "Output identifies missing test files for new or substantially modified components",
+    "The gate verdict is PASSED (no critical issues expected on this branch)"
+  ]
+}

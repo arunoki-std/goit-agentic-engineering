@@ -1,0 +1,111 @@
+{
+  "expectations": [
+    {
+      "text": "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+      "passed": true,
+      "evidence": "The report contains two explicit '✅ PASSED — Ready to open a PR.' statements: once at the end of Step 6 and once at the very end of the report. The gate verdict is unambiguous."
+    },
+    {
+      "text": "Output includes a test coverage check — identifies files missing test coverage",
+      "passed": true,
+      "evidence": "Step 4 (Additional Checks) contains a 'Test coverage' table listing all new source files with their test status. Four files are explicitly flagged as missing test coverage with '**warning**': AgentEditorPage.tsx, PRDetailView.tsx, PullsListView.tsx, and useShellContext.ts. These warnings are also repeated in Step 5 (Aggregated Findings, warnings 1–4) and in the final gate summary table."
+    },
+    {
+      "text": "Output mentions PR size or diff size as a check",
+      "passed": true,
+      "evidence": "Step 4 'PR size' section explicitly states: 'Total lines changed across all files: 12,138 insertions, 695 deletions = 12,833 total. Client source files only: 793 insertions, 471 deletions = 1,264 total.' It also flags this as a warning: 'Client source diff is 1,264 lines which exceeds 500. **warning** — large PR.' The same warning appears in Step 5 and the final gate table."
+    },
+    {
+      "text": "The architecture review section explicitly references React / frontend architecture patterns",
+      "passed": true,
+      "evidence": "Step 2 (Architecture Review Frontend) explicitly checks React-specific patterns: TanStack Query hooks vs direct fetch()/axios(), 'use client' directive placement, thin page.tsx wrappers delegating to _components/, useState/useEffect for server state vs useQuery, and useEffect dependency arrays. The table headers and finding descriptions directly reference React architecture patterns such as 'Business logic or API calls in page.tsx', 'use client on page-level or layout file', and 'useState/useEffect for server state that should be useQuery'."
+    },
+    {
+      "text": "The gate verdict is PASSED (no critical issues expected on this branch)",
+      "passed": true,
+      "evidence": "The report states '0 critical findings.' and the gate verdict is '✅ PASSED — Ready to open a PR.' (appears twice). Step 5 lists zero critical findings and only 5 warnings (all test coverage gaps and PR size). The final section confirms the gate is PASSED."
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 2,
+      "Write": 2,
+      "Bash": 18,
+      "Skill": 1
+    },
+    "total_tool_calls": 23,
+    "total_steps": 6,
+    "errors_encountered": 0,
+    "output_chars": 6821,
+    "transcript_chars": 0
+  },
+  "timing": {
+    "executor_duration_seconds": 188.5,
+    "grader_duration_seconds": null,
+    "total_duration_seconds": 188.5
+  },
+  "claims": [
+    {
+      "claim": "No server/src/ files changed — documentation-only changes in server/",
+      "type": "factual",
+      "verified": true,
+      "evidence": "The changed file summary lists no server/src/ files. All server/ changes are explicitly noted as AGENTS.md, CLAUDE.md, INSIGHTS.md, docs/ — documentation only."
+    },
+    {
+      "claim": "All three page.tsx files are now 3–5 line thin wrappers",
+      "type": "factual",
+      "verified": false,
+      "evidence": "The report asserts this but the transcript_chars is 0 — the executor didn't record a transcript, so the actual file content was not independently verifiable from this grading session. The claim is plausible given the changed file summary ('reduced to thin wrapper') but cannot be confirmed from outputs alone."
+    },
+    {
+      "claim": "PRDetailView.tsx = 185 lines (near limit but under 200)",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Specific line count stated in the architecture review table but not independently verifiable from the grading outputs since transcript_chars = 0 and the file itself was not examined."
+    },
+    {
+      "claim": "Architecture violations found: NONE",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Consistent with the final PASSED verdict. The architecture review table shows no violations across all checked patterns. Plausible given the clean PASSED gate."
+    },
+    {
+      "claim": "Security violations found: NONE",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Security review in Step 3 checked all relevant patterns (hardcoded secrets, dangerouslySetInnerHTML, eval, SQL injection) and found none. Consistent with documentation/UI-only changes."
+    },
+    {
+      "claim": "INSIGHTS.md files were updated across root, client/, and server/",
+      "type": "factual",
+      "verified": false,
+      "evidence": "The report states this but with transcript_chars = 0 it cannot be verified from grading outputs. The git diff would be the ground truth."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "The architecture review section explicitly references React / frontend architecture patterns",
+        "reason": "This assertion is trivially satisfied — any mention of 'use client' or 'TanStack Query' would pass it even if the review were superficial. A stronger version would check that the review correctly identifies whether each pattern is violated or clean, not just that the patterns are mentioned."
+      },
+      {
+        "reason": "No assertion checks whether the gate verdict is consistent with the actual findings. In this run the verdict is PASSED with 5 warnings, which is correct, but an assertion like 'gate is PASSED only when critical findings = 0' would catch a case where the skill issues PASSED despite critical findings being present."
+      },
+      {
+        "reason": "No assertion covers the quality of the test-coverage check — only that it exists. A discriminating assertion would verify that the specific files missing tests are correctly identified (e.g., by cross-referencing the diff). A review that fabricated plausible-looking file names would pass the current assertion."
+      }
+    ],
+    "overall": "All 5 assertions pass with genuine, specific evidence. The evals are reasonable but lean toward presence-checking rather than correctness-checking. The most important gap is that no assertion verifies the gate logic itself (PASSED ↔ zero critical findings), which is the core invariant of the skill."
+  }
+}

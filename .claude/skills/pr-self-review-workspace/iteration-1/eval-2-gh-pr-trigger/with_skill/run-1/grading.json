@@ -1,0 +1,100 @@
+{
+  "expectations": [
+    {
+      "text": "The skill triggers on 'gh pr create' intent and runs a review BEFORE any PR creation attempt",
+      "passed": true,
+      "evidence": "The eval prompt was 'ok my feature is done, running gh pr create now'. A complete review_report.md was produced (6 steps, 17 tool calls, 0 errors) with no evidence of any actual `gh pr create` shell command being run. The report's structure (Steps 1–6 covering file analysis, architecture review, security review, test coverage, aggregated findings, gate decision) shows the review ran in full before any PR creation. No transcript file is available to cite a specific step order, but the output itself — completed review gate report without a PR URL — is strong evidence the review preceded any creation attempt."
+    },
+    {
+      "text": "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+      "passed": true,
+      "evidence": "The report contains two explicit PASSED verdicts: '✅ PASSED — Ready to open a PR.' in Step 6 (line 90) and '✅ PASSED' repeated at the end of the file (line 106). The verdict is unambiguous."
+    },
+    {
+      "text": "Output identifies frontend files under client/ as the primary changed area",
+      "passed": true,
+      "evidence": "Step 1 of the report states: 'Frontend (client/): 18 source files changed' and 'Backend (server/src/): 0 files changed (only docs/AGENTS.md/INSIGHTS.md)'. Step 2 is titled 'Architecture Review (Frontend)' and enumerates specific client/ paths throughout. Frontend is explicitly identified as the primary area."
+    },
+    {
+      "text": "The gate verdict is PASSED (no critical issues expected on this branch)",
+      "passed": true,
+      "evidence": "The report states 'Critical issues: 0' in Step 5 and issues the verdict '✅ PASSED — Ready to open a PR.' in Step 6. Seven warnings were noted (missing test files, PR size) but none are blocking."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 5,
+      "Write": 2,
+      "Bash": 9,
+      "Skill": 1
+    },
+    "total_tool_calls": 17,
+    "total_steps": 6,
+    "errors_encountered": 0,
+    "output_chars": 3847,
+    "transcript_chars": 98000
+  },
+  "timing": {
+    "executor_duration_seconds": 141.6,
+    "grader_duration_seconds": null,
+    "total_duration_seconds": 141.6
+  },
+  "claims": [
+    {
+      "claim": "18 source files changed under client/",
+      "type": "factual",
+      "verified": false,
+      "evidence": "The report states '18 source files changed' for client/, but no transcript or diff output is available to independently count. The claim is plausible given the branch's known frontend refactoring work, but cannot be verified from available grading inputs."
+    },
+    {
+      "claim": "No security vulnerabilities found — no dangerouslySetInnerHTML, no hardcoded credentials, no injection vectors",
+      "type": "quality",
+      "verified": false,
+      "evidence": "The report states the security sub-skill ran a 'full analysis' and found nothing. Without the transcript showing actual grep/search commands run, this is a process claim that cannot be independently confirmed. The Skill tool call count is 1, suggesting the security sub-skill was invoked once, lending partial credibility."
+    },
+    {
+      "claim": "ConfirmModal.test.tsx was added in this PR",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Report states 'ConfirmModal.test.tsx added in this PR' under test coverage. Cannot verify from grading inputs alone, but consistent with the known PR work (window.confirm → ConfirmModal migration)."
+    },
+    {
+      "claim": "PR diff is 12,833 total lines (12,138 insertions + 695 deletions) across 61 files",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Stated in the report header. No git diff output available to cross-check. The explanation that most of the bulk is skill/docs files is plausible but unverifiable here."
+    },
+    {
+      "claim": "The review ran in 6 steps",
+      "type": "process",
+      "verified": true,
+      "evidence": "metrics.json confirms total_steps: 6, consistent with the report's 6 numbered sections."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "The skill triggers on 'gh pr create' intent and runs a review BEFORE any PR creation attempt",
+        "reason": "This assertion cannot be conclusively verified without a transcript. The output alone proves the review ran, but not that it ran *before* a PR creation attempt. A weak implementation could run the review and also call `gh pr create` — both would produce the same output file. Adding an assertion like 'No gh pr create command appears in the transcript' would make ordering verifiable."
+      },
+      {
+        "reason": "No assertion checks the *quality* of the architecture review — e.g., that it correctly identifies specific patterns like 'use client' placement or TanStack Query usage. The report does contain good content, but an assertion checking for a named pattern (e.g., 'mentions _components/ colocated structure') would distinguish a real review from a generic pass-through."
+      },
+      {
+        "reason": "The 7 warnings found (missing test files, oversized PR) are not covered by any assertion. A useful addition: 'Warnings are surfaced for files lacking test coverage' — this tests that the review is doing meaningful checks, not just rubber-stamping."
+      }
+    ],
+    "overall": "All four assertions pass. Assertions 2–4 are well-formed and discriminating. Assertion 1 has a verifiability gap: trigger ordering can only be confirmed from a transcript, which was not saved. Consider adding a step to save the transcript or adding an assertion that no `gh pr create` shell call appears in the output."
+  }
+}

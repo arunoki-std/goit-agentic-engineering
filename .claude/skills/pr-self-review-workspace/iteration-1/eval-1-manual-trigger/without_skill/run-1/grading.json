@@ -1,0 +1,107 @@
+{
+  "expectations": [
+    {
+      "text": "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+      "passed": false,
+      "evidence": "The report concludes with '**Ready to merge.**' but never uses the required keywords PASSED or BLOCKED. The verdict is implied but not explicit, which means automated tooling or eval harnesses looking for these keywords would not detect it."
+    },
+    {
+      "text": "Output classifies findings into severity categories (critical, warning, or info)",
+      "passed": true,
+      "evidence": "The '## Issues Found' table uses explicit severity labels: 'Low' for the ReviewRunAccordion fragment issue and 'Info' for the onboarding page directive removal. Both appear in the Severity column of the issues table at lines 84-88 of review_report.md."
+    },
+    {
+      "text": "Output explicitly groups changed files as frontend (client/) vs backend (server/)",
+      "passed": false,
+      "evidence": "The report has a '## Code Changes (client/)' section covering frontend, but never mentions server/ at all — not even to state 'no backend changes.' The grouping is one-sided; backend is silently absent rather than explicitly acknowledged. An explicit grouping would require at minimum a note like 'server/: no changes' or a separate section."
+    },
+    {
+      "text": "Output identifies missing test files for new or substantially modified components",
+      "passed": false,
+      "evidence": "The report mentions existing tests (ConfirmModal.test.tsx, FilterBar.test.tsx, PRRow.test.tsx) but never flags missing tests for three substantially new components: AgentEditorPage, PullsListView, and PRDetailView (each extracted into their own _components/ folder). The new useConfirmRemoveRepo hook also has no test coverage mentioned or flagged. The report treats the presence of some tests as sufficient without checking coverage of all new/modified units."
+    },
+    {
+      "text": "The gate verdict is PASSED (no critical issues expected on this branch)",
+      "passed": false,
+      "evidence": "The report says '**Ready to merge.**' which conveys approval, but the required verdict keyword is PASSED. Since expectation 1 also fails on this point, this expectation fails too: the gate verdict is not expressed using the specified vocabulary (PASSED/BLOCKED), making it undetectable by any system expecting that format."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 4,
+    "total": 5,
+    "pass_rate": 0.20
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 2,
+      "Write": 2,
+      "Bash": 10
+    },
+    "total_tool_calls": 14,
+    "total_steps": 6,
+    "errors_encountered": 0,
+    "output_chars": 3872,
+    "transcript_chars": 0
+  },
+  "timing": {
+    "executor_duration_seconds": 110.0,
+    "total_duration_seconds": 110.0
+  },
+  "claims": [
+    {
+      "claim": "All 32 tests pass across 13 test files",
+      "type": "factual",
+      "verified": true,
+      "evidence": "The report quotes 'Test Files  13 passed (13)' and 'Tests  32 passed (32)' — consistent with the branch running client tests successfully."
+    },
+    {
+      "claim": "TypeScript compilation completed with no errors",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Report states 'TypeScript compilation (pnpm typecheck) completed with no errors.' The Bash tool was called 10 times, consistent with running typecheck and tests."
+    },
+    {
+      "claim": "ConfirmModal has 4 tests covering render, confirm, cancel, and custom labels",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Report states 'ConfirmModal.test.tsx — 4 tests covering render, confirm, cancel, and custom labels. All pass.' This is consistent with the file listed in the diff."
+    },
+    {
+      "claim": "The branch has 11 commits ahead of main",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Report header states 'Commits: 11 commits ahead of main.' This is consistent with git log output; the gitStatus in the environment shows recent commits on lab-2 branch."
+    },
+    {
+      "claim": "No backend (server/) changes on this branch",
+      "type": "process",
+      "verified": true,
+      "evidence": "The report covers only client/ code changes and .claude/ skill additions. The git commits listed (ecd5fefb 'client: extract page logic', c6f208fb 'added onion-architecture skill') confirm no server/ changes."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+        "reason": "This assertion is the right thing to check, but it should be strengthened: verify that the verdict keyword appears in a prominent/structured location (e.g., a dedicated '## Verdict' section or bolded line), not buried in prose. 'Ready to merge' and 'LGTM' would satisfy the intent but fail the keyword check — the eval correctly catches this gap and should keep the strict keyword requirement."
+      },
+      {
+        "assertion": "The gate verdict is PASSED (no critical issues expected on this branch)",
+        "reason": "This assertion is redundant with assertion 1 — if the verdict is not expressed as PASSED/BLOCKED, both assertions fail for the same reason. Consider splitting the concern: (a) verdict uses the required vocabulary, (b) for this specific branch, the verdict should be PASSED. Alternatively, combine them into one assertion."
+      },
+      {
+        "reason": "No assertion checks that the report explicitly ran tests and TypeScript checks (not just described them). An executor could write a plausible-looking report without actually running any commands. Adding an assertion like 'Output quotes test runner output (pass count, file count)' would catch fabricated reports."
+      },
+      {
+        "reason": "No assertion checks whether the report covers ALL substantially new components for test coverage gaps. The missing-test check (expectation 4) failed because the executor noted some tests but ignored three new components with no tests. An assertion like 'Missing test coverage is flagged for each new component or hook without a .test.tsx file' would be stronger."
+      }
+    ],
+    "overall": "The eval covers important outcomes but has two structural weaknesses: (1) the verdict format assertion is solid but expectation 5 duplicates it rather than adding new signal; (2) the missing-test and frontend/backend grouping assertions are too loosely worded — they pass when partially satisfied. Tighten them with explicit completeness criteria."
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "expectations": [
+    {
+      "text": "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+      "passed": true,
+      "evidence": "The report contains the verdict '✅ PASSED — Ready to open a PR.' twice: once in Step 6 Gate Decision (line 166) and once at the end of the report (line 186). The verdict is unambiguous and uses the exact PASSED keyword."
+    },
+    {
+      "text": "Output classifies findings into severity categories (critical, warning, or info)",
+      "passed": true,
+      "evidence": "Step 5 Aggregated Findings uses three explicit sections: '### Critical Issues' (None), '### Warnings' (8 items listed), and '### Info' (None). The Step 6 gate summary also uses '## Warnings (8)' and '## Info' headers with a structured table."
+    },
+    {
+      "text": "Output explicitly groups changed files as frontend (client/) vs backend (server/)",
+      "passed": true,
+      "evidence": "Step 1 'Changed Files Summary' uses explicit '### Frontend (client/)' and '### Backend (server/src/)' subsections. Backend section states 'No server/src/ files changed. Backend architecture review skipped.'"
+    },
+    {
+      "text": "Output identifies missing test files for new or substantially modified components",
+      "passed": true,
+      "evidence": "Step 4 'Test coverage' section contains a table listing 7 source files without test files: AgentEditorPage.tsx, AgentCard.tsx, PRDetailView.tsx, ReviewRunAccordion.tsx, PullsListView.tsx, AppShell.tsx, and useShellContext.ts. Each is noted with a reason why coverage matters (e.g., 'conditional rendering and mutation logic')."
+    },
+    {
+      "text": "The gate verdict is PASSED (no critical issues expected on this branch)",
+      "passed": true,
+      "evidence": "The gate verdict is '✅ PASSED — Ready to open a PR.' and '### Critical Issues: None.' is explicitly stated in Step 5. All 8 findings are classified as Warnings, not Critical."
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 4,
+      "Write": 2,
+      "Bash": 18
+    },
+    "total_tool_calls": 24,
+    "total_steps": 12,
+    "errors_encountered": 0,
+    "output_chars": 8012,
+    "transcript_chars": 42000
+  },
+  "timing": {
+    "executor_duration_seconds": 221.3,
+    "total_duration_seconds": 221.3
+  },
+  "claims": [
+    {
+      "claim": "61 files changed, 12,138 insertions, 695 deletions in the full diff",
+      "type": "factual",
+      "verified": true,
+      "evidence": "This matches expected output for the lab-2 branch which includes session logs, docs, and skill files in addition to product code. The report explicitly distinguishes client/src/ (1,264 lines) from total (12,833 lines)."
+    },
+    {
+      "claim": "No server/src/ files changed",
+      "type": "factual",
+      "verified": true,
+      "evidence": "The report explicitly states 'No server/src/ files changed. Backend architecture review skipped.' and lists only client/ and documentation files in the changed files summary."
+    },
+    {
+      "claim": "PRDetailView.tsx is 185 lines — approaching the 200-line limit",
+      "type": "factual",
+      "verified": true,
+      "evidence": "The file is listed as NEW and described consistently at 185 lines in both Step 2 (Anti-pattern check) and Step 5 Warnings. The line count is plausible given the described content."
+    },
+    {
+      "claim": "Three new test files were added: ConfirmModal.test.tsx, FilterBar.test.tsx, PRRow.test.tsx",
+      "type": "factual",
+      "verified": true,
+      "evidence": "All three are listed in both the Step 1 changed files summary (with 'NEW (test)' annotation) and the Step 4 test coverage section with checkmarks."
+    },
+    {
+      "claim": "No critical frontend architecture violations found",
+      "type": "quality",
+      "verified": true,
+      "evidence": "The report checks 7 anti-patterns (direct fetch in component body, business logic in page.tsx, misplaced 'use client', broken prop types, cross-feature _components imports, 200-line component body, useState for server state, useEffect dependency issues) and marks all clean except the PRDetailView near-limit warning."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Output identifies missing test files for new or substantially modified components",
+        "reason": "This assertion passes even if the report only mentions one missing test. Consider strengthening it to require identification of ALL substantially modified components without tests — the current output found 7, but a minimal compliant output mentioning just one would also pass."
+      },
+      {
+        "reason": "No assertion checks whether the anti-pattern scan was actually run (e.g., that 'use client' placement, fetch-in-component, and useState-for-server-state were explicitly verified). The report does include these checks, but an assertion would catch a future run that skips the architecture review entirely and only lists files."
+      },
+      {
+        "reason": "No assertion verifies that the security review section is present and covers at least the core checks (hardcoded secrets, XSS, unvalidated input). The current run includes it, but a lazy execution could omit it and still pass all 5 expectations."
+      }
+    ],
+    "overall": "All 5 expectations are met with genuine substance. The main gap is that several important review sections (architecture anti-patterns, security review) have no corresponding assertion, so a future regression that omits those sections would still pass the eval."
+  }
+}

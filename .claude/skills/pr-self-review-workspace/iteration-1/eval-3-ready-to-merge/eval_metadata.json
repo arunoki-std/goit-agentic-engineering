@@ -1,0 +1,12 @@
+{
+  "eval_id": 3,
+  "eval_name": "ready-to-merge",
+  "prompt": "I think I'm ready to merge. Can you check if there are any issues with my changes before I submit for review?",
+  "assertions": [
+    "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+    "Output includes a test coverage check — identifies files missing test coverage",
+    "Output mentions PR size or diff size as a check",
+    "The architecture review section explicitly references React / frontend architecture patterns",
+    "The gate verdict is PASSED (no critical issues expected on this branch)"
+  ]
+}

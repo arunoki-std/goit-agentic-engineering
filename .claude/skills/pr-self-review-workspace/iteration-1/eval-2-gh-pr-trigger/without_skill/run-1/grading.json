@@ -1,0 +1,96 @@
+{
+  "expectations": [
+    {
+      "text": "The skill triggers on 'gh pr create' intent and runs a review BEFORE any PR creation attempt",
+      "passed": false,
+      "evidence": "This is the 'without_skill' baseline run — no skill was loaded, so there was no skill trigger. The executor did run a review before attempting PR creation (metrics note: 'Reviewed changes with git log + git diff before attempting creation'), but this was organic executor behavior, not skill-triggered. Furthermore, the review quality is shallow: metrics show 0 Read tool calls, meaning no source files were actually inspected. The expectation requires the skill to trigger, which cannot happen in a without_skill run — making this expectation structurally untestable here."
+    },
+    {
+      "text": "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+      "passed": false,
+      "evidence": "The review_report.md contains no 'PASSED' or 'BLOCKED' verdict anywhere. The report has a 'Branch summary', 'Changes overview', 'Observations', and 'PR creation' sections, but no explicit gate verdict or quality gate conclusion. The closest thing is the absence of blocking concerns, but that is not an explicit verdict."
+    },
+    {
+      "text": "Output identifies frontend files under client/ as the primary changed area",
+      "passed": true,
+      "evidence": "The 'Key change areas' table in review_report.md prominently lists four client/ paths as changed areas: client/src/app/agents/[id]/, client/src/app/repos/[repoId]/pulls/[number]/, client/src/app/repos/[repoId]/pulls/, and client/src/components/confirm-modal/. The description of what changed is accurate and specific."
+    },
+    {
+      "text": "The gate verdict is PASSED (no critical issues expected on this branch)",
+      "passed": false,
+      "evidence": "No gate verdict of any kind exists in the output. The report ends with a suggested PR title and body, but no quality gate conclusion (PASSED/BLOCKED/etc.). Without an explicit verdict, this expectation cannot be satisfied."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 3,
+    "total": 4,
+    "pass_rate": 0.25
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 0,
+      "Write": 2,
+      "Bash": 5
+    },
+    "total_tool_calls": 7,
+    "total_steps": 4,
+    "errors_encountered": 1,
+    "output_chars": 1842,
+    "transcript_chars": 8200
+  },
+  "timing": {
+    "executor_duration_seconds": 86.6,
+    "total_duration_seconds": 86.6
+  },
+  "claims": [
+    {
+      "claim": "Changes were reviewed with git log + git diff before attempting PR creation",
+      "type": "process",
+      "verified": true,
+      "evidence": "metrics.json notes field states: 'Reviewed changes with git log + git diff before attempting creation.' Bash tool was called 5 times, consistent with running git commands."
+    },
+    {
+      "claim": "gh CLI was not available in this environment",
+      "type": "factual",
+      "verified": true,
+      "evidence": "review_report.md states 'gh CLI was not available in this environment. The PR was not created.' metrics.json also records 1 error_encountered, consistent with gh command failure."
+    },
+    {
+      "claim": "Code structure follows colocated _components/ pattern consistent with Next.js App Router best practices",
+      "type": "quality",
+      "verified": false,
+      "evidence": "The executor made 0 Read tool calls, meaning no source files were inspected. This quality claim is unverifiable — it was likely derived solely from file path names in git diff output, not from actual code review."
+    },
+    {
+      "claim": "Tests added for ConfirmModal, FilterBar, PRRow",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Claim appears in the report's Changes overview, but 0 Read calls were made. The executor could not have verified test file contents — it inferred this from git diff --stat output alone."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": ["gh CLI not available; fell back to suggesting PR title/body in the report rather than creating the PR"]
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "The skill triggers on 'gh pr create' intent and runs a review BEFORE any PR creation attempt",
+        "reason": "This expectation is structurally untestable in a without_skill run because the skill cannot trigger when it is not loaded. The without_skill baseline should instead assert that NO structured review runs (to confirm the skill adds value), or the expectation should be rewritten to only appear in with_skill evals."
+      },
+      {
+        "assertion": "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+        "reason": "The without_skill baseline predictably fails this because an unguided model doesn't produce gate verdicts. This is a useful discriminating expectation for with_skill runs but it verifies skill presence, not code review quality. Consider adding a content-quality assertion: the verdict should reference actual code findings, not just claim PASSED with generic observations."
+      },
+      {
+        "reason": "No assertion checks whether the executor actually read source files (Read tool calls). The without_skill run made 0 Read calls yet produced a seemingly confident review. An assertion like 'review includes findings derived from reading actual source files' would catch this shallow-review failure mode."
+      },
+      {
+        "reason": "The timing data has no executor_duration_seconds separate from total_duration_seconds (both are 86.6s). If grader time is relevant, timing.json should record executor and grader separately."
+      }
+    ],
+    "overall": "Two of four assertions are structurally impossible for a without_skill run (gate verdict, skill trigger), making the without_skill baseline primarily useful as a contrast to with_skill — not as a standalone quality gate. The most valuable discriminating signal here is expectation 3 (frontend files identified), which passed. Consider restructuring so without_skill evals have their own assertion set focused on what a baseline agent does or doesn't do."
+  }
+}

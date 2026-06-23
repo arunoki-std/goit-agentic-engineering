@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "eval_name": "gh-pr-trigger",
+  "prompt": "ok my feature is done, running gh pr create now",
+  "assertions": [
+    "The skill triggers on 'gh pr create' intent and runs a review BEFORE any PR creation attempt",
+    "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+    "Output identifies frontend files under client/ as the primary changed area",
+    "The gate verdict is PASSED (no critical issues expected on this branch)"
+  ]
+}

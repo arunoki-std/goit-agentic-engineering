@@ -1,0 +1,315 @@
+{
+  "metadata": {
+    "skill_name": "pr-self-review",
+    "skill_path": "/Users/artem.slv/Projects/goit-agentic-engineering/.claude/skills/pr-self-review",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-06-23T06:18:35Z",
+    "evals_run": [
+      1,
+      2,
+      3
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 221.3,
+        "tokens": 8012,
+        "tool_calls": 24,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Output contains an explicit gate verdict \u2014 either PASSED or BLOCKED",
+          "passed": true,
+          "evidence": "The report contains the verdict '\u2705 PASSED \u2014 Ready to open a PR.' twice: once in Step 6 Gate Decision (line 166) and once at the end of the report (line 186). The verdict is unambiguous and uses the exact PASSED keyword."
+        },
+        {
+          "text": "Output classifies findings into severity categories (critical, warning, or info)",
+          "passed": true,
+          "evidence": "Step 5 Aggregated Findings uses three explicit sections: '### Critical Issues' (None), '### Warnings' (8 items listed), and '### Info' (None). The Step 6 gate summary also uses '## Warnings (8)' and '## Info' headers with a structured table."
+        },
+        {
+          "text": "Output explicitly groups changed files as frontend (client/) vs backend (server/)",
+          "passed": true,
+          "evidence": "Step 1 'Changed Files Summary' uses explicit '### Frontend (client/)' and '### Backend (server/src/)' subsections. Backend section states 'No server/src/ files changed. Backend architecture review skipped.'"
+        },
+        {
+          "text": "Output identifies missing test files for new or substantially modified components",
+          "passed": true,
+          "evidence": "Step 4 'Test coverage' section contains a table listing 7 source files without test files: AgentEditorPage.tsx, AgentCard.tsx, PRDetailView.tsx, ReviewRunAccordion.tsx, PullsListView.tsx, AppShell.tsx, and useShellContext.ts. Each is noted with a reason why coverage matters (e.g., 'conditional rendering and mutation logic')."
+        },
+        {
+          "text": "The gate verdict is PASSED (no critical issues expected on this branch)",
+          "passed": true,
+          "evidence": "The gate verdict is '\u2705 PASSED \u2014 Ready to open a PR.' and '### Critical Issues: None.' is explicitly stated in Step 5. All 8 findings are classified as Warnings, not Critical."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 141.6,
+        "tokens": 3847,
+        "tool_calls": 17,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "The skill triggers on 'gh pr create' intent and runs a review BEFORE any PR creation attempt",
+          "passed": true,
+          "evidence": "The eval prompt was 'ok my feature is done, running gh pr create now'. A complete review_report.md was produced (6 steps, 17 tool calls, 0 errors) with no evidence of any actual `gh pr create` shell command being run. The report's structure (Steps 1\u20136 covering file analysis, architecture review, security review, test coverage, aggregated findings, gate decision) shows the review ran in full before any PR creation. No transcript file is available to cite a specific step order, but the output itself \u2014 completed review gate report without a PR URL \u2014 is strong evidence the review preceded any creation attempt."
+        },
+        {
+          "text": "Output contains an explicit gate verdict \u2014 either PASSED or BLOCKED",
+          "passed": true,
+          "evidence": "The report contains two explicit PASSED verdicts: '\u2705 PASSED \u2014 Ready to open a PR.' in Step 6 (line 90) and '\u2705 PASSED' repeated at the end of the file (line 106). The verdict is unambiguous."
+        },
+        {
+          "text": "Output identifies frontend files under client/ as the primary changed area",
+          "passed": true,
+          "evidence": "Step 1 of the report states: 'Frontend (client/): 18 source files changed' and 'Backend (server/src/): 0 files changed (only docs/AGENTS.md/INSIGHTS.md)'. Step 2 is titled 'Architecture Review (Frontend)' and enumerates specific client/ paths throughout. Frontend is explicitly identified as the primary area."
+        },
+        {
+          "text": "The gate verdict is PASSED (no critical issues expected on this branch)",
+          "passed": true,
+          "evidence": "The report states 'Critical issues: 0' in Step 5 and issues the verdict '\u2705 PASSED \u2014 Ready to open a PR.' in Step 6. Seven warnings were noted (missing test files, PR size) but none are blocking."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 188.5,
+        "tokens": 6821,
+        "tool_calls": 23,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Output contains an explicit gate verdict \u2014 either PASSED or BLOCKED",
+          "passed": true,
+          "evidence": "The report contains two explicit '\u2705 PASSED \u2014 Ready to open a PR.' statements: once at the end of Step 6 and once at the very end of the report. The gate verdict is unambiguous."
+        },
+        {
+          "text": "Output includes a test coverage check \u2014 identifies files missing test coverage",
+          "passed": true,
+          "evidence": "Step 4 (Additional Checks) contains a 'Test coverage' table listing all new source files with their test status. Four files are explicitly flagged as missing test coverage with '**warning**': AgentEditorPage.tsx, PRDetailView.tsx, PullsListView.tsx, and useShellContext.ts. These warnings are also repeated in Step 5 (Aggregated Findings, warnings 1\u20134) and in the final gate summary table."
+        },
+        {
+          "text": "Output mentions PR size or diff size as a check",
+          "passed": true,
+          "evidence": "Step 4 'PR size' section explicitly states: 'Total lines changed across all files: 12,138 insertions, 695 deletions = 12,833 total. Client source files only: 793 insertions, 471 deletions = 1,264 total.' It also flags this as a warning: 'Client source diff is 1,264 lines which exceeds 500. **warning** \u2014 large PR.' The same warning appears in Step 5 and the final gate table."
+        },
+        {
+          "text": "The architecture review section explicitly references React / frontend architecture patterns",
+          "passed": true,
+          "evidence": "Step 2 (Architecture Review Frontend) explicitly checks React-specific patterns: TanStack Query hooks vs direct fetch()/axios(), 'use client' directive placement, thin page.tsx wrappers delegating to _components/, useState/useEffect for server state vs useQuery, and useEffect dependency arrays. The table headers and finding descriptions directly reference React architecture patterns such as 'Business logic or API calls in page.tsx', 'use client on page-level or layout file', and 'useState/useEffect for server state that should be useQuery'."
+        },
+        {
+          "text": "The gate verdict is PASSED (no critical issues expected on this branch)",
+          "passed": true,
+          "evidence": "The report states '0 critical findings.' and the gate verdict is '\u2705 PASSED \u2014 Ready to open a PR.' (appears twice). Step 5 lists zero critical findings and only 5 warnings (all test coverage gaps and PR size). The final section confirms the gate is PASSED."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.2,
+        "passed": 1,
+        "failed": 4,
+        "total": 5,
+        "time_seconds": 110.0,
+        "tokens": 3872,
+        "tool_calls": 14,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Output contains an explicit gate verdict \u2014 either PASSED or BLOCKED",
+          "passed": false,
+          "evidence": "The report concludes with '**Ready to merge.**' but never uses the required keywords PASSED or BLOCKED. The verdict is implied but not explicit, which means automated tooling or eval harnesses looking for these keywords would not detect it."
+        },
+        {
+          "text": "Output classifies findings into severity categories (critical, warning, or info)",
+          "passed": true,
+          "evidence": "The '## Issues Found' table uses explicit severity labels: 'Low' for the ReviewRunAccordion fragment issue and 'Info' for the onboarding page directive removal. Both appear in the Severity column of the issues table at lines 84-88 of review_report.md."
+        },
+        {
+          "text": "Output explicitly groups changed files as frontend (client/) vs backend (server/)",
+          "passed": false,
+          "evidence": "The report has a '## Code Changes (client/)' section covering frontend, but never mentions server/ at all \u2014 not even to state 'no backend changes.' The grouping is one-sided; backend is silently absent rather than explicitly acknowledged. An explicit grouping would require at minimum a note like 'server/: no changes' or a separate section."
+        },
+        {
+          "text": "Output identifies missing test files for new or substantially modified components",
+          "passed": false,
+          "evidence": "The report mentions existing tests (ConfirmModal.test.tsx, FilterBar.test.tsx, PRRow.test.tsx) but never flags missing tests for three substantially new components: AgentEditorPage, PullsListView, and PRDetailView (each extracted into their own _components/ folder). The new useConfirmRemoveRepo hook also has no test coverage mentioned or flagged. The report treats the presence of some tests as sufficient without checking coverage of all new/modified units."
+        },
+        {
+          "text": "The gate verdict is PASSED (no critical issues expected on this branch)",
+          "passed": false,
+          "evidence": "The report says '**Ready to merge.**' which conveys approval, but the required verdict keyword is PASSED. Since expectation 1 also fails on this point, this expectation fails too: the gate verdict is not expressed using the specified vocabulary (PASSED/BLOCKED), making it undetectable by any system expecting that format."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.25,
+        "passed": 1,
+        "failed": 3,
+        "total": 4,
+        "time_seconds": 86.6,
+        "tokens": 1842,
+        "tool_calls": 7,
+        "errors": 1
+      },
+      "expectations": [
+        {
+          "text": "The skill triggers on 'gh pr create' intent and runs a review BEFORE any PR creation attempt",
+          "passed": false,
+          "evidence": "This is the 'without_skill' baseline run \u2014 no skill was loaded, so there was no skill trigger. The executor did run a review before attempting PR creation (metrics note: 'Reviewed changes with git log + git diff before attempting creation'), but this was organic executor behavior, not skill-triggered. Furthermore, the review quality is shallow: metrics show 0 Read tool calls, meaning no source files were actually inspected. The expectation requires the skill to trigger, which cannot happen in a without_skill run \u2014 making this expectation structurally untestable here."
+        },
+        {
+          "text": "Output contains an explicit gate verdict \u2014 either PASSED or BLOCKED",
+          "passed": false,
+          "evidence": "The review_report.md contains no 'PASSED' or 'BLOCKED' verdict anywhere. The report has a 'Branch summary', 'Changes overview', 'Observations', and 'PR creation' sections, but no explicit gate verdict or quality gate conclusion. The closest thing is the absence of blocking concerns, but that is not an explicit verdict."
+        },
+        {
+          "text": "Output identifies frontend files under client/ as the primary changed area",
+          "passed": true,
+          "evidence": "The 'Key change areas' table in review_report.md prominently lists four client/ paths as changed areas: client/src/app/agents/[id]/, client/src/app/repos/[repoId]/pulls/[number]/, client/src/app/repos/[repoId]/pulls/, and client/src/components/confirm-modal/. The description of what changed is accurate and specific."
+        },
+        {
+          "text": "The gate verdict is PASSED (no critical issues expected on this branch)",
+          "passed": false,
+          "evidence": "No gate verdict of any kind exists in the output. The report ends with a suggested PR title and body, but no quality gate conclusion (PASSED/BLOCKED/etc.). Without an explicit verdict, this expectation cannot be satisfied."
+        }
+      ],
+      "notes": [
+        "gh CLI not available; fell back to suggesting PR title/body in the report rather than creating the PR"
+      ]
+    },
+    {
+      "eval_id": 3,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.2,
+        "passed": 1,
+        "failed": 4,
+        "total": 5,
+        "time_seconds": 112.9,
+        "tokens": 3452,
+        "tool_calls": 14,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Output contains an explicit gate verdict \u2014 either PASSED or BLOCKED",
+          "passed": false,
+          "evidence": "The report uses 'READY TO MERGE' and 'Good to merge.' instead of the expected explicit keyword PASSED or BLOCKED. The header reads '**Status: READY TO MERGE**' and the recommendation ends with '**Good to merge.**' \u2014 semantically positive, but the required gate verdict vocabulary is absent."
+        },
+        {
+          "text": "Output includes a test coverage check \u2014 identifies files missing test coverage",
+          "passed": false,
+          "evidence": "The report mentions test results (32 tests passing, 11 new tests added) but does not perform a coverage analysis or identify any files lacking test coverage. It reports that tests pass, not which files are covered or uncovered."
+        },
+        {
+          "text": "Output mentions PR size or diff size as a check",
+          "passed": false,
+          "evidence": "No mention of PR size, diff size, lines changed, or number of files modified as a gate check anywhere in the report. The summary lists 11 commits but does not frame this as a size check."
+        },
+        {
+          "text": "The architecture review section explicitly references React / frontend architecture patterns",
+          "passed": true,
+          "evidence": "The Code Quality section explicitly references Next.js App Router patterns: 'page.tsx files are Server Components by default; the \"use client\" boundary is pushed down into the dedicated component.' It also discusses colocated _components/ directories and the correct separation of data hooks from view-layer state \u2014 all frontend architecture patterns specific to React/Next.js."
+        },
+        {
+          "text": "The gate verdict is PASSED (no critical issues expected on this branch)",
+          "passed": false,
+          "evidence": "The report's final verdict is 'Good to merge.' and 'READY TO MERGE' \u2014 functionally equivalent to PASSED, but the literal keyword 'PASSED' does not appear. Per the expectation text 'either PASSED or BLOCKED', the absence of that exact term makes this a fail. If the expectation is interpreted loosely as 'approval verdict with no critical issues', the spirit passes, but against the strict wording it does not."
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 183.8,
+        "stddev": 40.0573,
+        "min": 141.6,
+        "max": 221.3
+      },
+      "tokens": {
+        "mean": 6226.6667,
+        "stddev": 2145.1644,
+        "min": 3847,
+        "max": 8012
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.2167,
+        "stddev": 0.0289,
+        "min": 0.2,
+        "max": 0.25
+      },
+      "time_seconds": {
+        "mean": 103.1667,
+        "stddev": 14.4202,
+        "min": 86.6,
+        "max": 112.9
+      },
+      "tokens": {
+        "mean": 3055.3333,
+        "stddev": 1071.5565,
+        "min": 1842,
+        "max": 3872
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.78",
+      "time_seconds": "+80.6",
+      "tokens": "+3171"
+    }
+  },
+  "notes": []
+}

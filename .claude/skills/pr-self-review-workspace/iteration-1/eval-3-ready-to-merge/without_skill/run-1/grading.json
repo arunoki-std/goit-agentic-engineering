@@ -1,0 +1,108 @@
+{
+  "expectations": [
+    {
+      "text": "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+      "passed": false,
+      "evidence": "The report uses 'READY TO MERGE' and 'Good to merge.' instead of the expected explicit keyword PASSED or BLOCKED. The header reads '**Status: READY TO MERGE**' and the recommendation ends with '**Good to merge.**' — semantically positive, but the required gate verdict vocabulary is absent."
+    },
+    {
+      "text": "Output includes a test coverage check — identifies files missing test coverage",
+      "passed": false,
+      "evidence": "The report mentions test results (32 tests passing, 11 new tests added) but does not perform a coverage analysis or identify any files lacking test coverage. It reports that tests pass, not which files are covered or uncovered."
+    },
+    {
+      "text": "Output mentions PR size or diff size as a check",
+      "passed": false,
+      "evidence": "No mention of PR size, diff size, lines changed, or number of files modified as a gate check anywhere in the report. The summary lists 11 commits but does not frame this as a size check."
+    },
+    {
+      "text": "The architecture review section explicitly references React / frontend architecture patterns",
+      "passed": true,
+      "evidence": "The Code Quality section explicitly references Next.js App Router patterns: 'page.tsx files are Server Components by default; the \"use client\" boundary is pushed down into the dedicated component.' It also discusses colocated _components/ directories and the correct separation of data hooks from view-layer state — all frontend architecture patterns specific to React/Next.js."
+    },
+    {
+      "text": "The gate verdict is PASSED (no critical issues expected on this branch)",
+      "passed": false,
+      "evidence": "The report's final verdict is 'Good to merge.' and 'READY TO MERGE' — functionally equivalent to PASSED, but the literal keyword 'PASSED' does not appear. Per the expectation text 'either PASSED or BLOCKED', the absence of that exact term makes this a fail. If the expectation is interpreted loosely as 'approval verdict with no critical issues', the spirit passes, but against the strict wording it does not."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 4,
+    "total": 5,
+    "pass_rate": 0.2
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 0,
+      "Write": 2,
+      "Bash": 12
+    },
+    "total_tool_calls": 14,
+    "total_steps": 7,
+    "errors_encountered": 0,
+    "output_chars": 3452,
+    "transcript_chars": 42000
+  },
+  "timing": {
+    "executor_duration_seconds": 112.9,
+    "grader_duration_seconds": null,
+    "total_duration_seconds": 112.9
+  },
+  "claims": [
+    {
+      "claim": "All 32 tests pass",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Report shows 'Test Files 13 passed (13) / Tests 32 passed (32)' — plausible given the Bash tool calls to run test suite"
+    },
+    {
+      "claim": "TypeScript type check passes with no errors",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Report states 'TypeScript type check passes with no errors (pnpm exec tsc --noEmit)' — consistent with 12 Bash calls and no errors_encountered"
+    },
+    {
+      "claim": "window.confirm() fully removed — grepping client/src/ finds zero remaining calls",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Consistent with the 12 Bash tool calls; the claim of running grep is plausible"
+    },
+    {
+      "claim": "11 new tests added covering ConfirmModal, FilterBar, PRRow",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Specific test counts (×4, ×4, ×3) are detailed and specific enough to be credible; total 32 matches"
+    },
+    {
+      "claim": "Session transcript files in docs/ inflate repo size and should be gitignored",
+      "type": "quality",
+      "verified": false,
+      "evidence": "Unverifiable from transcript alone — claim is reasonable but not confirmed by cross-checking .gitignore"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Output contains an explicit gate verdict — either PASSED or BLOCKED",
+        "reason": "This assertion is discriminating but the wording 'either PASSED or BLOCKED' is ambiguous — it could mean the literal keywords, or any approval/rejection verdict. A without_skill run producing 'READY TO MERGE' will fail this assertion even though it expresses the correct outcome. Consider clarifying whether the literal term is required, or whether the assertion should check for an approval-type verdict (PASSED / READY TO MERGE / GOOD TO MERGE) vs a blocking verdict."
+      },
+      {
+        "assertion": "The gate verdict is PASSED (no critical issues expected on this branch)",
+        "reason": "This expectation partially overlaps with expectation 1 and fails for the same reason — the literal word PASSED is not present. If the intent is to verify that the review approved the branch (not blocked it), the assertion should accept synonyms like 'READY TO MERGE' or 'Good to merge.' Otherwise both assertions punish semantically correct outputs."
+      },
+      {
+        "reason": "No assertion checks whether the report correctly identifies the minor issues found (fragment indentation nit, null prId in deleteRun, session transcript files). A skill that produces a clean 'all green' report without surfacing real issues would pass all current assertions — consider adding an assertion like 'Output lists at least one minor finding or nit, even on a clean branch.'"
+      },
+      {
+        "reason": "The test coverage check assertion (expectation 2) is important for discriminating quality reviews, but the without_skill run completely omits it. This is exactly the kind of gap a good skill should catch — worth keeping as a discriminating assertion."
+      }
+    ],
+    "overall": "The eval catches real gaps (missing coverage check, no diff size check), but expectations 1 and 5 both fail on a literal keyword match that may not reflect the skill's actual goal. Clarifying whether 'PASSED/BLOCKED' must appear verbatim vs. as a semantic verdict would resolve ambiguity and make these assertions more discriminating."
+  }
+}
