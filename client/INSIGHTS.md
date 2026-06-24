@@ -29,6 +29,7 @@ Prune quarterly.
 <!-- Non-default конвенції client/ -->
 <!-- Приклад: [2026-06-19] Сторінки тонкі — вся логіка в _components/<Name>/; не класти бізнес-логіку в page.tsx -->
 [2026-06-22] RunTraceDrawer — канонічний прецедент вкладених _components/ (TraceBody, FindingsSection, PromptBlock тощо); орієнтуватись на нього при розбитті великих компонентів — src/app/repos/[repoId]/pulls/[number]/_components/RunTraceDrawer/
+[2026-06-24] `useConventionSkillPreview` is a `useMutation` (not `useQuery`) even though it reads data — the endpoint is POST and the call must be imperative; trigger with `preview.mutate(undefined, { onSuccess })` inside `useEffect` on modal mount — src/lib/hooks/conventions.ts:53
 
 ## Tool & Library Notes
 
@@ -51,6 +52,7 @@ Prune quarterly.
 
 [2026-06-19] Severity filter bar in FindingsTab uses local state (not URL) initialized from `initialSeverity` prop; clicking an already-active badge toggles back to "all" via `prev === sev ? null : sev` — FindingsTab.tsx:49
 [2026-06-24] ConventionsView follows SkillsView pattern (AppShell inside view, not page.tsx) — but AppShell depends on usePathname/useRouter/useRepos, so its view-level components cannot be tested without heavy mocking; test the ConventionRow presentational sub-export instead — src/app/repos/[repoId]/conventions/_components/ConventionsView/ConventionsView.tsx
+[2026-06-24] Mocking `mutate` as `vi.fn()` in tests intentionally leaves `onSuccess` uncalled — form state stays at initial (empty) values; use this to test disabled-button states in modals that populate via `mutate(…, { onSuccess })` without needing to simulate API responses — src/app/repos/[repoId]/conventions/_components/CreateSkillModal/CreateSkillModal.test.tsx:9
 
 ## Open Questions
 

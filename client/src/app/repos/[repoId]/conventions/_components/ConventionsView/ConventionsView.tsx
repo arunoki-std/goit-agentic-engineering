@@ -7,6 +7,8 @@ import { Button, EmptyState, ErrorState, Skeleton } from "@devdigest/ui";
 import { AppShell } from "@/components/app-shell";
 import type { ConventionCandidate } from "@devdigest/shared";
 import { useConventions, useExtractConventions, useUpdateConvention } from "@/lib/hooks/conventions";
+import { useActiveRepo } from "@/lib/repo-context";
+import { CreateSkillModal } from "../CreateSkillModal";
 
 // ---- ConventionRow -------------------------------------------------------
 
@@ -104,10 +106,14 @@ export function ConventionsView() {
   const t = useTranslations("conventions");
   const params = useParams<{ repoId: string }>();
   const repoId = params.repoId;
+  const { activeRepo } = useActiveRepo();
 
   const { data: candidates, isLoading, isError, refetch } = useConventions(repoId);
   const extract = useExtractConventions(repoId);
   const update = useUpdateConvention(repoId);
+
+  const [showCreateModal, setShowCreateModal] = React.useState(false);
+  const acceptedCount = candidates?.filter((c) => c.accepted).length ?? 0;
 
   const crumb = [
     { label: t("page.crumbLab") },
@@ -138,8 +144,18 @@ export function ConventionsView() {
               </div>
             )}
           </div>
+          {acceptedCount > 0 && (
+            <Button
+              kind="primary"
+              size="sm"
+              icon="Sparkles"
+              onClick={() => setShowCreateModal(true)}
+            >
+              {t("page.createSkill")}
+            </Button>
+          )}
           <Button
-            kind="primary"
+            kind="secondary"
             size="sm"
             icon="RefreshCw"
             disabled={extract.isPending}
@@ -201,6 +217,14 @@ export function ConventionsView() {
           )}
         </div>
       </div>
+      {showCreateModal && (
+        <CreateSkillModal
+          repoId={repoId}
+          repoName={activeRepo?.name ?? repoId}
+          acceptedCount={acceptedCount}
+          onClose={() => setShowCreateModal(false)}
+        />
+      )}
     </AppShell>
   );
 }
