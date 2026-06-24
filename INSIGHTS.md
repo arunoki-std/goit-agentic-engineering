@@ -52,3 +52,9 @@ Prune quarterly (stale entries are noise, not signal).
 ## Open Questions
 
 <!-- Що лишилось нез'ясованим — питання без відповіді -->
+
+## Conventions Extractor
+
+[2026-06-24] `z.number().transform(v => Math.min(1, Math.max(0, v)))` lets `MockLLMProvider.completeStructured` accept out-of-range confidence (e.g. 1.5) via `safeParse` — the transform runs before the result is returned, so the test receives the clamped value without throwing — server/src/modules/conventions/service.ts:31
+[2026-06-24] Evidence validation reads actual files from `clonePath` with `node:fs/promises readFile`; IT tests write real files into `os.tmpdir()` via `mkdtemp` and set `clonePath` on the DB row — no fs mocking needed — server/test/conventions-extract.it.test.ts
+[2026-06-24] Re-scan policy: `replaceAll` deletes all existing candidates for `(workspaceId, repoId)` then inserts new ones in one shot — simple, no accumulation, createdAt on new rows serves as scan timestamp — server/src/modules/conventions/repository.ts

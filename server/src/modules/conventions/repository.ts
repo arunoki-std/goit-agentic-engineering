@@ -9,6 +9,15 @@ export interface UpdateConvention {
   rule?: string;
 }
 
+export interface InsertConvention {
+  category?: string;
+  rule: string;
+  evidencePath?: string;
+  evidenceLine?: number;
+  evidenceSnippet?: string;
+  confidence?: number;
+}
+
 export class ConventionsRepository {
   constructor(private db: Db) {}
 
@@ -43,5 +52,51 @@ export class ConventionsRepository {
       .where(and(eq(t.conventions.workspaceId, workspaceId), eq(t.conventions.id, id)))
       .returning();
     return row;
+  }
+
+  /** Workspace-scoped clone path lookup — extract pipeline entry point. */
+  async getRepoClonable(
+    workspaceId: string,
+    repoId: string,
+  ): Promise<{ clonePath: string | null } | undefined> {
+    const [row] = await this.db
+      .select({ clonePath: t.repos.clonePath })
+      .from(t.repos)
+      .where(and(eq(t.repos.workspaceId, workspaceId), eq(t.repos.id, repoId)));
+    return row;
+  }
+
+  /**
+   * Re-scan policy: delete all previous candidates for this repo, then insert
+   * the new validated set. Each extraction run is authoritative — stale
+   * candidates from a previous scan are replaced, not accumulated. The scan
+   * timestamp is visible via conventions.createdAt on the new rows.
+   */
+  async replaceAll(
+    workspaceId: string,
+    repoId: string,
+    rows: InsertConvention[],
+  ): Promise<ConventionRow[]> {
+    await this.db
+      .delete(t.conventions)
+      .where(and(eq(t.conventions.workspaceId, workspaceId), eq(t.conventions.repoId, repoId)));
+    if (rows.length === 0) return [];
+    const inserted = await this.db
+      .insert(t.conventions)
+      .values(
+        rows.map((r) => ({
+          workspaceId,
+          repoId,
+          category: r.category,
+          rule: r.rule,
+          evidencePath: r.evidencePath,
+          evidenceLine: r.evidenceLine,
+          evidenceSnippet: r.evidenceSnippet,
+          confidence: r.confidence,
+          accepted: false,
+        })),
+      )
+      .returning();
+    return inserted;
   }
 }

@@ -23,8 +23,12 @@ const PatchBody = z
 
 /**
  * Conventions module.
- *   GET   /repos/:id/conventions                      → list candidates (workspace-scoped)
- *   PATCH /repos/:id/conventions/:conventionId        → update accepted / rule
+ *   GET  /repos/:id/conventions                      → list candidates (workspace-scoped)
+ *   POST /repos/:id/conventions/extract              → run LLM extraction scan
+ *   PATCH /repos/:id/conventions/:conventionId       → update accepted / rule
+ *
+ * Static routes (extract) are registered before parameterised ones (:conventionId)
+ * so Fastify's radix tree routes them correctly.
  */
 export default async function conventionsRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
@@ -33,6 +37,12 @@ export default async function conventionsRoutes(appBase: FastifyInstance) {
   app.get('/repos/:id/conventions', { schema: { params: RepoParams } }, async (req) => {
     const { workspaceId } = await getContext(app.container, req);
     return service.list(workspaceId, req.params.id);
+  });
+
+  // Static segment 'extract' must be registered before :conventionId wildcard.
+  app.post('/repos/:id/conventions/extract', { schema: { params: RepoParams } }, async (req) => {
+    const { workspaceId } = await getContext(app.container, req);
+    return service.extract(workspaceId, req.params.id);
   });
 
   app.patch(
