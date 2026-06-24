@@ -1,9 +1,11 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
-import type { ConventionCandidate } from '@devdigest/shared';
+import type { ConventionCandidate, Skill, SkillType } from '@devdigest/shared';
 import type { Container } from '../../platform/container.js';
-import { NotFoundError } from '../../platform/errors.js';
+import { NotFoundError, ValidationError } from '../../platform/errors.js';
+import { SkillsRepository } from '../skills/repository.js';
+import { toSkillDto } from '../skills/helpers.js';
 import {
   ConventionsRepository,
   type ConventionRow,
@@ -211,6 +213,64 @@ function toDto(row: ConventionRow): ConventionCandidate {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Markdown builder for convention skills.
+// Groups accepted candidates by category and emits evidence-cited sections.
+// ---------------------------------------------------------------------------
+
+export function buildConventionMarkdown(fullName: string, candidates: ConventionRow[]): string {
+  const accepted = candidates.filter((c) => c.accepted);
+
+  const byCategory = new Map<string, ConventionRow[]>();
+  for (const c of accepted) {
+    const cat = c.category ?? 'General';
+    if (!byCategory.has(cat)) byCategory.set(cat, []);
+    byCategory.get(cat)!.push(c);
+  }
+
+  const lines: string[] = [
+    `# ${fullName} Conventions`,
+    '',
+    'Flag changes that violate these rules and cite file:line when raising an issue.',
+    '',
+  ];
+
+  for (const [cat, rules] of byCategory) {
+    lines.push(`## ${cat}`, '');
+    for (const r of rules) {
+      lines.push(`- ${r.rule}`);
+      if (r.evidencePath && r.evidenceLine != null) {
+        lines.push('', `  Evidence: \`${r.evidencePath}:${r.evidenceLine}\``);
+        if (r.evidenceSnippet) {
+          lines.push('  ```', `  ${r.evidenceSnippet}`, '  ```');
+        }
+      }
+      lines.push('');
+    }
+  }
+
+  return lines.join('\n');
+}
+
+export interface SkillPreview {
+  name: string;
+  description: string;
+  type: 'convention';
+  enabled: true;
+  body: string;
+  token_count: number;
+}
+
+export interface CreateConventionSkillInput {
+  name: string;
+  description: string;
+  type: SkillType;
+  enabled: boolean;
+  body: string;
+}
+
+// ---------------------------------------------------------------------------
+
 export class ConventionsService {
   private repo: ConventionsRepository;
 
@@ -284,5 +344,63 @@ export class ConventionsService {
     const validated = await validateEvidence(clonePath, result.data.candidates);
     const saved = await this.repo.replaceAll(workspaceId, repoId, validated);
     return saved.map(toDto);
+  }
+
+  async previewSkill(
+    workspaceId: string,
+    repoId: string,
+    candidateIds?: string[],
+  ): Promise<SkillPreview> {
+    const repoMeta = await this.repo.getRepoMeta(workspaceId, repoId);
+    if (!repoMeta) throw new NotFoundError('Repo not found');
+
+    const all = await this.repo.list(workspaceId, repoId);
+    let accepted = all.filter((c) => c.accepted);
+    if (candidateIds !== undefined) {
+      const idSet = new Set(candidateIds);
+      accepted = accepted.filter((c) => idSet.has(c.id));
+    }
+    if (accepted.length === 0) {
+      throw new ValidationError('No accepted candidates found for this repo');
+    }
+
+    const body = buildConventionMarkdown(repoMeta.fullName, accepted);
+    const tokenCount = this.container.tokenizer.count(body);
+
+    return {
+      name: `${repoMeta.fullName} Conventions`,
+      description: `Convention rules extracted from ${repoMeta.fullName}`,
+      type: 'convention',
+      enabled: true,
+      body,
+      token_count: tokenCount,
+    };
+  }
+
+  async createSkill(
+    workspaceId: string,
+    repoId: string,
+    input: CreateConventionSkillInput,
+  ): Promise<Skill> {
+    const all = await this.repo.list(workspaceId, repoId);
+    const accepted = all.filter((c) => c.accepted);
+    const evidenceFiles = [
+      ...new Set(accepted.map((c) => c.evidencePath).filter((p): p is string => p != null)),
+    ];
+
+    const skillsRepo = new SkillsRepository(this.container.db);
+    const row = await skillsRepo.insert({
+      workspaceId,
+      name: input.name,
+      description: input.description,
+      type: input.type,
+      source: 'extracted',
+      body: input.body,
+      enabled: input.enabled,
+      evidenceFiles: evidenceFiles.length > 0 ? evidenceFiles : undefined,
+    });
+
+    const tokenCount = this.container.tokenizer.count(row.body);
+    return toSkillDto(row, tokenCount);
   }
 }

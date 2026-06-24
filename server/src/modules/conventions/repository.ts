@@ -66,6 +66,17 @@ export class ConventionsRepository {
     return row;
   }
 
+  async getRepoMeta(
+    workspaceId: string,
+    repoId: string,
+  ): Promise<{ name: string; fullName: string } | undefined> {
+    const [row] = await this.db
+      .select({ name: t.repos.name, fullName: t.repos.fullName })
+      .from(t.repos)
+      .where(and(eq(t.repos.workspaceId, workspaceId), eq(t.repos.id, repoId)));
+    return row;
+  }
+
   /**
    * Re-scan policy: delete all previous candidates for this repo, then insert
    * the new validated set. Each extraction run is authoritative — stale
