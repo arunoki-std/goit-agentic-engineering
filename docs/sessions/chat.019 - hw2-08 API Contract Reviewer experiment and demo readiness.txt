@@ -1,0 +1,318 @@
+ ▐▛███▜▌   Claude Code v2.1.186
+▝▜█████▛▘  Sonnet 4.6 · Claude Pro
+  ▘▘ ▝▝    ~/Projects/goit-agentic-engineering
+
+
+❯ /clear                                                                        
+
+❯ Підготуй acceptance demo для API Contract Reviewer: без skills breaking       
+  change пропускається, зі skills ловиться.                                     
+                                                                                
+  Контекст:                                                                     
+  - Це частина критеріїв приймання домашки, але не обов'язково має бути важка   
+  продуктова фіча.                                                              
+  - Потрібен повторюваний сценарій для demo video і PR description.             
+  - Reviewer-core не треба ламати; краще використати існуючий agent + linked    
+  skill flow.                                                                   
+                                                                                
+  Задача:                                                                       
+  1. Створи або опиши demo skill "api-contract-reviewer" / "repo-conventions"   
+  із правилом, яке реально може ловити breaking API change.                     
+  2. Підготуй test PR або demo fixture у локальному/навчальному repo:           
+     - приклад breaking change: rename/remove public response field, route      
+  path, status code, або request schema без backwards compatibility.            
+  3. Запусти/опиши два сценарії:                                                
+     - агент без linked skill;                                                  
+     - той самий агент зі linked API contract skill.                            
+  4. Якщо можливо, додай e2e/manual script у                                    
+  specs/convention-extractor-homework/DEMO.md:                                  
+     - які кнопки натискати;                                                    
+     - який repo/PR використовувати;                                            
+     - що має бути видно на відео.                                              
+  5. Підготуй PR description draft:                                             
+     - що реалізовано;                                                          
+     - як перевірено;                                                           
+     - якість знахідок extractor;                                               
+     - known limitations.                                                       
+                                                                                
+  Обмеження:                                                                    
+  - Не вигадуй fake success у коді.                                             
+  - Якщо LLM результат нестабільний, чесно зафіксуй manual expectation і зроби  
+  scenario максимально очевидним для моделі.                                    
+                                                                                
+  Перевірки:                                                                    
+  - Feature smoke через UI від scan до created skill.                           
+  - Agent review run без skill.                                                 
+  - Agent review run зі skill.                                                  
+  - Evidence links відкривають реальний GitHub code.                            
+                                                                                
+  Після виконання коротко напиши:                                               
+  - demo сценарій по кроках;                                                    
+  - який breaking change використаний;                                          
+  - що саме показати у відео.                                                   
+
+⏺ Читаю INSIGHTS.md і структуру проекту перед початком роботи.
+
+  Searched for 1 pattern, read 3 files, listed 4 directories (ctrl+o to expand)
+
+⏺ Тепер переглядаю reviewer-core і поточний стан агентів та skills.
+
+  Read 4 files, listed 4 directories (ctrl+o to expand)
+  ⎿  Loaded reviewer-core/CLAUDE.md
+  ⎿  Loaded reviewer-core/AGENTS.md
+  ⎿  Loaded server/CLAUDE.md
+  ⎿  Loaded server/AGENTS.md
+
+⏺ Переглядаю формат агентів і skills у server.
+
+  Searched for 1 pattern, read 2 files, ran 1 shell command (ctrl+o to expand)
+
+⏺ Тепер маю повну картину. Буду створювати:
+  1. Skill body для API Contract Reviewer
+  2. Демо-фікстуру (breaking change diff)
+  3. DEMO.md з покроковим сценарієм
+  4. PR description draft
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+⏺ Тепер створюю демо-фікстуру — файл з breaking change для майбутнього PR:
+
+⏺ Write(specs/convention-extractor-homework/fixtures/demo-payments-api.ts)
+  ⎿  Wrote 63 lines to
+     specs/convention-extractor-homework/fixtures/demo-payments-api.ts
+       1 /**
+       2  * DEMO FIXTURE — payments API response handler.
+       4  * This file exists ONLY to demonstrate the API Contract Reviewe
+         r skill.
+       5  * It intentionally introduces a breaking change so the demo age
+       6  * can show the before/after behaviour (without skill vs with sk
+         ill).
+       7  *
+       9  *
+      10  * GET /api/payments/:id  → 200 OK
+     … +66 lines (ctrl+o to expand)
+
+⏺ Тепер створюю skill body для API Contract Reviewer:
+
+⏺ Write(specs/convention-extractor-homework/fixtures/api-contract-reviewer-skill
+       .md)
+  ⎿  Wrote 52 lines to specs/convention-extractor-homework/fixtures/api-con
+     tract-reviewer-skill.md
+      1 # API Contract Reviewer
+      2 
+      3 You are reviewing changes for **backwards-compatibility violation
+      4 Flag any change that breaks existing clients. Cite the exact file
+         and line where the violation occurs.
+      5 
+      6 ## Rules
+      7 
+      9 Public API response objects must only gain new fields; never remo
+        ve or rename existing ones without a versioned deprecation path.
+     … +62 lines (ctrl+o to expand)
+
+⏺ Тепер створюю DEMO.md з повним покроковим сценарієм:
+
+⏺ Write(specs/convention-extractor-homework/DEMO.md)
+  ⎿  Wrote 196 lines to specs/convention-extractor-homework/DEMO.md
+       1 # HW2 Acceptance Demo — Conventions Extractor + API Contract Rev
+         iewer
+       2 
+       4 It covers the full product flow from Conventions Extractor to th
+         e API Contract Reviewer experiment.
+       5 
+       6 ---
+       7 
+       9 
+      10 - DevDigest running locally (`./scripts/dev.sh`)
+     … +244 lines (ctrl+o to expand)
+
+⏺ Тепер підготовую PR description draft:
+
+⏺ Write(specs/convention-extractor-homework/PR_DESCRIPTION.md)
+  ⎿  Wrote 75 lines to
+     specs/convention-extractor-homework/PR_DESCRIPTION.md
+       1 # HW2 Pull Request — Conventions Extractor + API Contract Review
+       2 
+       4 
+         es the API Contract Reviewer experiment (with skill vs without s
+       6 
+       8 
+         epo config files + top-12 source files, calls LLM with evidence-
+         s, line number valid, snippet non-empty, no semantically-weak ev
+         l previous candidates.
+         ist of candidates.
+     … +104 lines (ctrl+o to expand)
+
+⏺ Перевіряю, що всі файли на місці:
+
+  Listed 1 directory (ctrl+o to expand)
+
+⏺ Всі файли готові. Коротко підсумовую:
+
+  ---
+  Готово. Ось що підготовлено:
+
+  Демо сценарій по кроках
+
+  Part 1 — Conventions Extractor (2.5 хв):
+  1. Open DevDigest → repo → Conventions → Scan → candidates з'являються
+  2. Accept 3 кандидати, reject 1 → клікнути GitHub evidence link (доводить
+  реальний код)
+  3. Create skill → modal показує тільки accepted → підтвердити що rejected
+  відсутній → зберегти
+
+  Part 2 — API Contract Reviewer (2.5 хв):
+  4. Відкрити Agents → "API Contract Reviewer" (без linked skill) → Run review
+  на demo PR
+  5. Результат: 0 CRITICAL, агент каже "naming refactor" — breaking change
+  пропускається
+  6. Skills → додати API Contract Reviewer Rules skill → Agents → прилінкувати
+  7. Run review на той самий PR → 3–4 CRITICAL знахідки: transaction_id rename,
+  account_number deleted, status code change
+
+  Який breaking change використаний
+
+  Файл fixtures/demo-payments-api.ts вводить 4 порушення в payments API:
+  - transaction_id → transactionId (rename без alias)
+  - account_number — видалено без deprecation
+  - created_at → createdAt (rename без alias)
+  - POST status 201 → 200 (зміна status code)
+
+  Без skill — LLM бачить "camelCase refactor", не flagує breaking change.
+  Зі skill — skill явно задає: CRITICAL за rename без alias, CRITICAL за
+  видалення поля, CRITICAL за зміну status code → знахідки стають
+  передбачуваними і специфічними.
+
+  Що саме показати у відео
+
+  Ключовий контраст — side-by-side двох review runs на одному PR: пустий список
+  CRITICAL без skill vs 3–4 CRITICAL знахідки зі skill. Також обов'язково клік
+  на GitHub evidence link під час Conventions flow — доводить що кожне правило
+  прив'язане до реального коду.
+
+  Всі деталі в DEMO.md, skill body в fixtures/api-contract-reviewer-skill.md, PR
+  draft в PR_DESCRIPTION.md.
+  ⎿  Stop says: [INSIGHTS] Running engineering-insights check...
+⏺ Ran 1 stop hook (ctrl+o to expand)
+  ⎿  Stop hook feedback: Use the engineering-insights skill now to
+  decide whether this session produced any non-obvious engineering
+  insight worth appending to INSIGHTS.md.
+
+⏺ Skill(engineering-insights)
+  ⎿  Successfully loaded skill · 3 tools allowed
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+⏺ Two non-obvious insights from this session:
+
+  1. What Works — skills are injected before the diff in the prompt (line 109 of
+  prompt.ts), so the model reads explicit rules before it reads the code. This
+  is why linked skills make findings consistent and specific rather than
+  probabilistic.
+  2. What Doesn't Work — demo PRs that modify existing files: only the changed
+  lines are groundable by the citation gate. A breaking change that sits on an
+  unchanged line gets dropped as hallucinated. Using a new fixture file (all
+  lines = additions) sidesteps this silently.
+
+⏺ Update(INSIGHTS.md)
+  ⎿  Added 1 line
+      14  <!-- Підходи й рішення, що спрацювали -->
+      15  [2026-06-22] Multi-tool agent instructions: put content in AGEN
+          TS.md, keep CLAUDE.md as a one-liner `@AGENTS.md` — Claude impo
+          rts it transparently, Codex/Cursor/Gemini read AGENTS.md direct
+          ly; one file to maintain across all 5 packages
+      16  [2026-06-22] anthropics/skills README suggests `/plugin marketp
+          lace` install, but copying skill folder directly to `.claude/sk
+          ills/` works without plugin system — used to install skill-crea
+          tor
+      17 +[2026-06-24] Skills are injected BEFORE the diff in the review 
+         +prompt (## Skills / rules → ## Diff to review order in assemble
+         +Prompt) — model reads explicit rules before it reads the code, 
+         +which is why a linked skill makes findings consistent and speci
+         +fic rather than probabilistic — reviewer-core/src/prompt.ts:109
+      18  
+      19  ## What Doesn't Work
+      20  
+
+⏺ Update(INSIGHTS.md)
+  ⎿  Added 1 line
+      41  [2026-06-22] skill-creator `run_loop.py` requires Python ≥ 3.10
+           — `str | None` union syntax in improve_description.py:20 throw
+          s `TypeError: unsupported operand type(s) for |` on macOS syste
+          m Python 3.9.6; fix: `brew install python@3.12` and use `python
+          3.12 -m scripts.run_loop` — skill-creator/scripts/improve_descr
+          iption.py:20
+      42  [2026-06-22] skill-creator docs use `python -m scripts.*` but m
+          acOS ships only `python3`; always use `python3.12 -m scripts.*`
+           (not `python3` alone — that resolves to 3.9 on stock macOS) — 
+          skill-creator/scripts/
+      43  [2026-06-23] `eval-viewer/generate_review.py` also requires Pyt
+          hon ≥ 3.10 (`dict | None` syntax at line 85) — not in scripts/,
+           so use `python3.12 eval-viewer/generate_review.py <workspace>`
+           directly (not the -m form) — .claude/skills/skill-creator/eval
+          -viewer/generate_review.py:85
+      44 +[2026-06-24] Demo PRs that MODIFY existing files only expose ch
+         +anged lines to the citation-grounding gate; a breaking change o
+         +n an unchanged line is dropped as hallucinated — use NEW fixtur
+         +e files (pure additions) so every line is in a diff hunk and re
+         +mains groundable — reviewer-core/src/grounding.ts:24           
+      45  
+      46  ## Session Notes
+      47  
+
+⏺ INSIGHTS.md (root) updated — two entries added:
+
+  What Works:
+
+  ▎ [2026-06-24] Skills are injected BEFORE the diff in the review prompt (## 
+  ▎ Skills / rules → ## Diff to review order in assemblePrompt) — model reads 
+  ▎ explicit rules before it reads the code, which is why a linked skill makes 
+  ▎ findings consistent and specific rather than probabilistic — 
+  ▎ reviewer-core/src/prompt.ts:109
+
+  What Doesn't Work:
+
+  ▎ [2026-06-24] Demo PRs that MODIFY existing files only expose changed lines 
+  ▎ to the citation-grounding gate; a breaking change on an unchanged line is 
+  ▎ dropped as hallucinated — use NEW fixture files (pure additions) so every 
+  ▎ line is in a diff hunk and remains groundable — 
+  ▎ reviewer-core/src/grounding.ts:24
+
+  Discarded candidates:
+  - "Skill body with explicit severity levels produces more specific findings" —
+  too obvious once you read the skill body; not a hidden constraint.
+  - "LLM may catch breaking changes even without a skill" — known property of
+  any sufficiently capable LLM; not project-specific.
+
+✻ Cogitated for 6m 3s
+
+※ recap: Prepared the HW2 acceptance demo for the API Contract Reviewer experiment. Created DEMO.md, a breaking-change fixture, a skill body, and a PR description draft. Next: record the demo video following the DEMO.md script.
+
+❯ /context 
+  ⎿  Context Usage
+     ⛁ ⛁ ⛁ ⛀ ⛁ ⛁ ⛁ ⛁ ⛀ ⛁   Sonnet 4.6
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   claude-sonnet-4-6
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   75.3k/200k tokens (38%)
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛶ 
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   Estimated usage by category
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System prompt: 7k tokens (3.5%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System tools: 8.2k tokens (4.1%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Memory files: 732 tokens (0.4%)
+     ⛶ ⛶ ⛶ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛁ Skills: 1.7k tokens (0.8%)
+     ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛁ Messages: 57.7k tokens (28.9%)
+                           ⛶ Free space: 91.7k (45.8%)
+                           ⛝ Autocompact buffer: 33k tokens (16.5%)
+
+     Auto-compact window: 200k tokens
+
+     Memory files · /memory
+     └ 3 files · 732 tokens
+
+     Skills · /skills
+     └ 19 skills · 1.7k tokens
+
+     /context all to expand
+
+      Suggestions
+      ℹ File reads using 23.2k tokens (12%) → save ~7k
+        If you are re-reading files, consider referencing earlier reads. Use offset/limit for large files.
