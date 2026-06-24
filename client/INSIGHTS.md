@@ -30,12 +30,14 @@ Prune quarterly.
 <!-- Приклад: [2026-06-19] Сторінки тонкі — вся логіка в _components/<Name>/; не класти бізнес-логіку в page.tsx -->
 [2026-06-22] RunTraceDrawer — канонічний прецедент вкладених _components/ (TraceBody, FindingsSection, PromptBlock тощо); орієнтуватись на нього при розбитті великих компонентів — src/app/repos/[repoId]/pulls/[number]/_components/RunTraceDrawer/
 [2026-06-24] `useConventionSkillPreview` is a `useMutation` (not `useQuery`) even though it reads data — the endpoint is POST and the call must be imperative; trigger with `preview.mutate(undefined, { onSuccess })` inside `useEffect` on modal mount — src/lib/hooks/conventions.ts:53
+[2026-06-24] Hook input types are often typed ahead of the UI that uses them — before adding a new field to a hook, check whether the contract type already includes it; `CreateConventionSkillInput.agent_id?: string` was pre-typed in hooks/conventions.ts before the modal exposed the select — src/lib/hooks/conventions.ts:17
 
 ## Tool & Library Notes
 
 <!-- Квірки Next.js 15, TanStack Query, next-intl -->
 [2026-06-23] recharts виводить `width(0) and height(0) of chart should be greater than 0` у stderr при кожному запуску `pnpm test` — це jsdom-шум (відсутній layout engine), не помилка; не витрачати час на розслідування — src/test/smoke.test.tsx
 [2026-06-23] Vendored `Drawer` (vendor/ui/kit/Drawer.tsx:57) internally applies `padding: 24` to its children container — full-width children (tab bars, dividers) must use a `margin: "-24px"` wrapper to break out; there's no `noPad` prop — src/vendor/ui/kit/Drawer.tsx
+[2026-06-24] `SelectInput` accepts only `value: string` — no `null`/`undefined` overload; use `""` as the "no selection" sentinel and add a leading `{ value: "", label: "— no agent —" }` option; `onChange` fires the empty string when deselected — src/vendor/ui/kit/SelectInput.tsx
 
 ## Recurring Errors & Fixes
 

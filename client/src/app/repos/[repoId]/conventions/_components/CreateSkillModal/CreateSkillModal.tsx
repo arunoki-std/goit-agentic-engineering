@@ -15,6 +15,7 @@ import {
   useConventionSkillPreview,
   useCreateConventionSkill,
 } from "@/lib/hooks/conventions";
+import { useAgents } from "@/lib/hooks/agents";
 import { useToast } from "@/lib/toast";
 
 const TYPE_OPTIONS: { value: SkillType; label: string }[] = [
@@ -38,6 +39,7 @@ interface Props {
 export function CreateSkillModal({ repoId, repoName, acceptedCount, onClose }: Props) {
   const preview = useConventionSkillPreview(repoId);
   const create = useCreateConventionSkill(repoId);
+  const { data: agents } = useAgents();
   const toast = useToast();
 
   const [name, setName] = React.useState("");
@@ -47,6 +49,7 @@ export function CreateSkillModal({ repoId, repoName, acceptedCount, onClose }: P
   const [body, setBody] = React.useState("");
   const [originalBody, setOriginalBody] = React.useState("");
   const [apiTokenCount, setApiTokenCount] = React.useState<number | null>(null);
+  const [agentId, setAgentId] = React.useState("");
 
   React.useEffect(() => {
     preview.mutate(undefined, {
@@ -70,10 +73,29 @@ export function CreateSkillModal({ repoId, repoName, acceptedCount, onClose }: P
 
   const canSubmit = !!name.trim() && !!body.trim() && !create.isPending;
 
+  const agentOptions = React.useMemo(
+    () => [
+      { value: "", label: "— no agent —" },
+      ...(agents ?? []).map((a) => ({ value: a.id, label: a.name })),
+    ],
+    [agents],
+  );
+
   const handleCreate = async () => {
     if (!canSubmit) return;
-    await create.mutateAsync({ name: name.trim(), description, type, enabled, body });
-    toast.success(`Skill "${name.trim()}" created and added to Skills Lab`);
+    await create.mutateAsync({
+      name: name.trim(),
+      description,
+      type,
+      enabled,
+      body,
+      agent_id: agentId || undefined,
+    });
+    const linkedAgent = agentId ? agents?.find((a) => a.id === agentId) : undefined;
+    const msg = linkedAgent
+      ? `Skill "${name.trim()}" created and linked to agent "${linkedAgent.name}"`
+      : `Skill "${name.trim()}" created and added to Skills Lab`;
+    toast.success(msg);
     onClose();
   };
 
@@ -165,6 +187,15 @@ export function CreateSkillModal({ repoId, repoName, acceptedCount, onClose }: P
                 </FormField>
               </div>
             </div>
+
+            <FormField label="Link to agent">
+              <SelectInput
+                value={agentId}
+                onChange={setAgentId}
+                options={agentOptions}
+                mono={false}
+              />
+            </FormField>
 
             <FormField label="Skill body" required>
               <div
