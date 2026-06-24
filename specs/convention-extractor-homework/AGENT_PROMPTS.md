@@ -133,6 +133,55 @@
 - Перевірити, що snippet справді існує у локальному файлі repo.
 
 ---
+FIX 1.
+Перед переходом до Prompt 3 виправ якість extraction:
+
+1. Evidence validation не має пропускати candidates з порожнім або whitespace-only evidence_snippet. Якщо evidence_line існує, але рядок порожній, candidate треба відкинути або замінити evidence на найближчий непорожній рядок тільки якщо це безпечно й детерміновано.
+
+2. Confidence зараз всюди 1.0. Онови prompt/schema handling так, щоб confidence була каліброваною:
+   - 0.9-1.0 тільки для правил, прямо підтверджених config або повторюваним патерном у кількох файлах;
+   - 0.7-0.89 для добре видимого патерну з одним сильним evidence;
+   - нижче 0.7 для слабших припущень.
+   Не став 1.0 за замовчуванням.
+
+3. Додай/онови tests:
+   - blank evidence line is rejected;
+   - whitespace-only evidence line is rejected;
+   - extraction does not default missing/invalid confidence to 1.0.
+
+Після цього повтори manual test і покажи:
+- скільки candidates мають blank snippets;
+- distribution confidence values.
+
+---
+FIX 2
+Extraction still stores candidates whose evidence line is non-empty but does not semantically support the rule.
+
+Fix evidence quality:
+
+1. Tighten the LLM prompt:
+   - evidence.line must point to the exact line that demonstrates the rule;
+   - do not cite nearby comments, braces, `try {`, `});`, object fields, or unrelated lines;
+   - for naming rules, evidence must include the named symbol/type/interface/const;
+   - for typing rules, evidence must include the typed declaration/signature/generic;
+   - for imports rules, evidence must include the import/export line;
+   - for documentation rules, evidence may cite comment lines.
+
+2. Add deterministic weak-evidence filtering:
+   - reject snippets that are only braces/punctuation/control-flow wrappers like `try {`;
+   - reject comment snippets for non-documentation rules unless the rule is specifically about comments;
+   - reject snippets like `});` or generic object fields when the rule is about naming/types/imports.
+
+3. Add tests:
+   - naming rule with comment evidence is rejected;
+   - typing rule with `try {` evidence is rejected;
+   - documentation rule with comment evidence is allowed;
+   - imports rule with import/export evidence is allowed.
+
+4. Re-run extraction and report:
+   - number of candidates;
+   - examples of 5 candidates where rule and evidence line clearly match.
+---
 
 ## Промпт 3 — Create skill from accepted conventions API
 

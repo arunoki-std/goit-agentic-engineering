@@ -357,6 +357,144 @@ d('Testcontainers: conventions extract pipeline', () => {
     await app.close();
   });
 
+  it('naming rule with comment evidence is rejected — isWeakEvidence filters comment lines', async () => {
+    // Line 1 is a comment — weak evidence for a naming rule.
+    await writeFile(
+      join(cloneDir, 'src', 'naming-comment.ts'),
+      '// camelCase convention\nconst myVar = 1;\n',
+    );
+
+    const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
+    const app = await buildApp({
+      config,
+      db: pg.handle.db,
+      overrides: {
+        git: new MockGitClient(),
+        github: new MockGitHubClient(),
+        repoIntel: makeRepoIntel([]),
+        llm: {
+          openrouter: new MockLLMProvider('openai', {
+            structured: candidateFixture({
+              path: 'src/naming-comment.ts',
+              line: 1,
+              category: 'naming',
+              rule: 'Use camelCase for variable names',
+            }),
+          }),
+        },
+      },
+    });
+
+    const res = await app.inject({ method: 'POST', url: `/repos/${repoId}/conventions/extract` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([]);
+    await app.close();
+  });
+
+  it('typing rule with "try {" evidence is rejected — isWeakEvidence filters structural lines', async () => {
+    // Line 1 is "try {" — weak evidence for a typing rule.
+    await writeFile(
+      join(cloneDir, 'src', 'typing-try.ts'),
+      'try {\n  const x: number = 1;\n} catch (e) {}\n',
+    );
+
+    const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
+    const app = await buildApp({
+      config,
+      db: pg.handle.db,
+      overrides: {
+        git: new MockGitClient(),
+        github: new MockGitHubClient(),
+        repoIntel: makeRepoIntel([]),
+        llm: {
+          openrouter: new MockLLMProvider('openai', {
+            structured: candidateFixture({
+              path: 'src/typing-try.ts',
+              line: 1,
+              category: 'typing',
+              rule: 'Explicit type annotations on all locals',
+            }),
+          }),
+        },
+      },
+    });
+
+    const res = await app.inject({ method: 'POST', url: `/repos/${repoId}/conventions/extract` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([]);
+    await app.close();
+  });
+
+  it('documentation rule with comment evidence is accepted — comments are valid for documentation', async () => {
+    await writeFile(
+      join(cloneDir, 'src', 'doc-comment.ts'),
+      '// Public API — do not remove\nfunction publicFn() {}\n',
+    );
+
+    const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
+    const app = await buildApp({
+      config,
+      db: pg.handle.db,
+      overrides: {
+        git: new MockGitClient(),
+        github: new MockGitHubClient(),
+        repoIntel: makeRepoIntel([]),
+        llm: {
+          openrouter: new MockLLMProvider('openai', {
+            structured: candidateFixture({
+              path: 'src/doc-comment.ts',
+              line: 1,
+              category: 'documentation',
+              rule: 'Every public function must have a leading comment',
+            }),
+          }),
+        },
+      },
+    });
+
+    const res = await app.inject({ method: 'POST', url: `/repos/${repoId}/conventions/extract` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as Record<string, unknown>[];
+    expect(body).toHaveLength(1);
+    expect(body[0]!['evidence_snippet']).toBe('// Public API — do not remove');
+    await app.close();
+  });
+
+  it('imports rule with import/export line is accepted — import keyword satisfies category check', async () => {
+    await writeFile(
+      join(cloneDir, 'src', 'imports-import.ts'),
+      "import type { Foo } from './foo.js';\nexport const bar = 1;\n",
+    );
+
+    const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
+    const app = await buildApp({
+      config,
+      db: pg.handle.db,
+      overrides: {
+        git: new MockGitClient(),
+        github: new MockGitHubClient(),
+        repoIntel: makeRepoIntel([]),
+        llm: {
+          openrouter: new MockLLMProvider('openai', {
+            structured: candidateFixture({
+              path: 'src/imports-import.ts',
+              line: 1,
+              category: 'imports',
+              rule: 'Use "import type" for type-only imports',
+            }),
+          }),
+        },
+      },
+    });
+
+    const res = await app.inject({ method: 'POST', url: `/repos/${repoId}/conventions/extract` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as Record<string, unknown>[];
+    expect(body).toHaveLength(1);
+    expect(body[0]!['evidence_snippet']).toBe("import type { Foo } from './foo.js';");
+    await app.close();
+  });
+
   it('POST /repos/<uncloned-uuid>/conventions/extract → 404 when no clonePath', async () => {
     const [uncloned] = await pg.handle.db
       .insert(t.repos)

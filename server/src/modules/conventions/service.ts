@@ -39,6 +39,15 @@ Given configuration and source files from a repository, extract ONLY conventions
 For every rule you emit, cite the EXACT file path and 1-based line number from the files below that demonstrates it.
 Do NOT invent rules without a concrete file and line. Categories: naming, formatting, imports, error-handling, testing, typing, documentation.
 
+EVIDENCE LINE REQUIREMENTS — the line you cite must directly demonstrate the rule:
+- naming rules: cite the line that declares or defines the symbol (const, let, var, function, class, interface, type, enum). Do NOT cite a nearby comment, a brace, or an object field that doesn't name the symbol.
+- typing rules: cite the line that contains the type annotation (": SomeType"), generic ("<T>"), or typed signature. Do NOT cite "try {", a comment, or a plain assignment.
+- imports rules: cite the line that contains the import or export statement itself.
+- error-handling rules: cite the line with "throw", "catch", or "new Error()" — not just "try {" alone.
+- documentation rules: you MAY cite a comment line (// or /* ...) as evidence.
+- formatting rules: cite the line that exhibits the formatting pattern.
+BAD evidence (never cite these for non-documentation rules): comment lines (// ..., /* ..., * ...), bare braces ({ or }), closing punctuation (});  }), control-flow openers without a body (try {, catch {, else {).
+
 CONFIDENCE SCALE — assign carefully, do NOT default to 1.0:
 - 0.9–1.0: rule is directly confirmed by a config file value (e.g. "semi": true in eslint config) OR the exact same pattern appears in 3 or more of the provided files
 - 0.7–0.89: pattern clearly and unambiguously visible in 1–2 files with a strong, specific evidence line
@@ -94,14 +103,69 @@ async function gatherSampleFiles(
   return files;
 }
 
+// Matches control-flow openers and bare structural punctuation that carry no
+// semantic information about the rule being cited.
+const STRUCTURAL_ONLY_RE =
+  /^(?:try\s*\{|catch\s*(?:\([^)]*\))?\s*\{|finally\s*\{|else(?:\s+if\s*\([^)]*\))?\s*\{|\{|\}[;,)]*|\][;,]*|[;,])$/;
+
+// Matches a bare object-property key line (e.g. `  stale: { ... },`) that has
+// no declaration keyword — these are never valid evidence for naming/typing/imports.
+const OBJECT_FIELD_RE = /^\s*\w[\w.]*\s*:/;
+const DECLARATION_KEYWORD_RE = /\b(?:const|let|var|function|class|interface|type|enum|return|throw|import|export)\b/;
+
+/**
+ * Returns true when the trimmed snippet is semantically weak evidence for the
+ * given category and should be rejected regardless of the LLM's claim.
+ *
+ * Rejected universally (all categories):
+ *   - Structural-only lines: bare braces, "try {", "catch {", "});", "];", etc.
+ *   - Comment lines ("//", "/*", leading "*") — EXCEPT for documentation rules.
+ *
+ * Category-specific:
+ *   - naming/typing/imports → generic object-field lines (no declaration keyword)
+ *   - naming/typing         → import/export lines (cite the symbol declaration instead)
+ *   - imports               → line must contain the word "import" or "export"
+ *   - typing                → line must contain a type annotation (": Word") or generic ("<Word")
+ */
+function isWeakEvidence(category: string, snippet: string): boolean {
+  const s = snippet.trim();
+
+  if (STRUCTURAL_ONLY_RE.test(s)) return true;
+
+  // Comment lines are valid evidence only for documentation rules.
+  if (/^(?:\/\/|\/\*|\*(?!\s*\/))/.test(s) && category !== 'documentation') return true;
+
+  // Generic object-field lines (no declaration keyword) are weak for naming/typing/imports.
+  if (
+    (category === 'naming' || category === 'typing' || category === 'imports') &&
+    OBJECT_FIELD_RE.test(s) &&
+    !DECLARATION_KEYWORD_RE.test(s)
+  )
+    return true;
+
+  // Naming and typing rules must cite a declaration, not an import/export line.
+  if (
+    (category === 'naming' || category === 'typing') &&
+    /^\s*(?:import|export)\b/.test(s)
+  )
+    return true;
+
+  if (category === 'imports' && !/\b(?:import|export)\b/.test(s)) return true;
+
+  if (category === 'typing' && !(/:\s*\w/.test(s) || /<\w/.test(s))) return true;
+
+  return false;
+}
+
 /**
  * Deterministic evidence validation — every candidate emitted by the LLM must
- * survive all four checks before being persisted:
+ * survive all checks before being persisted:
  *  1. The file exists in the local clone.
  *  2. The line number is within the actual file.
  *  3. The evidence_snippet is taken verbatim from that line (not from the LLM).
  *  4. The snippet is non-empty after trimming (blank/whitespace-only lines are
  *     not useful evidence and indicate the LLM cited the wrong line).
+ *  5. The snippet is not semantically weak evidence for the rule category.
  */
 async function validateEvidence(
   clonePath: string,
@@ -117,6 +181,7 @@ async function validateEvidence(
     const rawLine = lines[lineIdx] ?? '';
     if (rawLine.trim() === '') continue; // blank / whitespace-only line → reject
     const snippet = rawLine.trimEnd().slice(0, 200);
+    if (isWeakEvidence(c.category, snippet)) continue; // semantically weak → reject
     // Default to 0.6 (neutral) when LLM omits confidence — never silently use 1.0.
     const confidence = Math.min(1, Math.max(0, c.confidence ?? 0.6));
     valid.push({
