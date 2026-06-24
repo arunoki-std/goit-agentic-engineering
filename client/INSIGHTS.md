@@ -13,6 +13,7 @@ Prune quarterly.
 <!-- Підходи й рішення, що спрацювали в client/ -->
 [2026-06-23] Коли hook викликає `window.confirm()`, перенести підтвердження у консьюмер-компонент: hook отримує `onRequest(id, name)` callback, всередині hook — `request/confirm/cancel` трійця стану, компонент рендерить `<ConfirmModal>` — так JSX не потрапляє у hook; прецедент: useConfirmRemoveRepo() + AppShell.tsx — src/components/app-shell/hooks/useShellContext.ts
 [2026-06-23] `Modal` вже є в `@devdigest/ui` (vendor/ui/kit/Modal.tsx) — реекспортується через `export * from "./kit"`; не потрібно писати власний dialog — src/vendor/ui/kit/Modal.tsx
+[2026-06-24] `useMutation.variables` holds the current mutation's input while `isPending` is true — use `update.variables?.id === c.id` to show per-row loading state in a list without adding local state — src/app/repos/[repoId]/conventions/_components/ConventionsView/ConventionsView.tsx
 
 ## What Doesn't Work
 
@@ -49,6 +50,7 @@ Prune quarterly.
 <!-- Датовані підсумки сесій -->
 
 [2026-06-19] Severity filter bar in FindingsTab uses local state (not URL) initialized from `initialSeverity` prop; clicking an already-active badge toggles back to "all" via `prev === sev ? null : sev` — FindingsTab.tsx:49
+[2026-06-24] ConventionsView follows SkillsView pattern (AppShell inside view, not page.tsx) — but AppShell depends on usePathname/useRouter/useRepos, so its view-level components cannot be tested without heavy mocking; test the ConventionRow presentational sub-export instead — src/app/repos/[repoId]/conventions/_components/ConventionsView/ConventionsView.tsx
 
 ## Open Questions
 
