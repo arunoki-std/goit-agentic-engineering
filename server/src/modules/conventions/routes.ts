@@ -1,0 +1,48 @@
+import type { FastifyInstance } from 'fastify';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
+import { getContext } from '../_shared/context.js';
+import { NotFoundError } from '../../platform/errors.js';
+import { ConventionsService } from './service.js';
+
+const RepoParams = z.object({ id: z.string().uuid() });
+
+const ConventionParams = z.object({
+  id: z.string().uuid(),
+  conventionId: z.string().uuid(),
+});
+
+const PatchBody = z
+  .object({
+    accepted: z.boolean().optional(),
+    rule: z.string().min(1).optional(),
+  })
+  .refine((b) => b.accepted !== undefined || b.rule !== undefined, {
+    message: 'At least one of accepted or rule must be provided',
+  });
+
+/**
+ * Conventions module.
+ *   GET   /repos/:id/conventions                      → list candidates (workspace-scoped)
+ *   PATCH /repos/:id/conventions/:conventionId        → update accepted / rule
+ */
+export default async function conventionsRoutes(appBase: FastifyInstance) {
+  const app = appBase.withTypeProvider<ZodTypeProvider>();
+  const service = new ConventionsService(app.container);
+
+  app.get('/repos/:id/conventions', { schema: { params: RepoParams } }, async (req) => {
+    const { workspaceId } = await getContext(app.container, req);
+    return service.list(workspaceId, req.params.id);
+  });
+
+  app.patch(
+    '/repos/:id/conventions/:conventionId',
+    { schema: { params: ConventionParams, body: PatchBody } },
+    async (req) => {
+      const { workspaceId } = await getContext(app.container, req);
+      const convention = await service.update(workspaceId, req.params.conventionId, req.body);
+      if (!convention) throw new NotFoundError('Convention not found');
+      return convention;
+    },
+  );
+}

@@ -23,6 +23,8 @@ Prune quarterly.
 <!-- Non-default конвенції server/ -->
 <!-- Приклад: [2026-06-19] Всі секрети через SecretsProvider, не AppConfig — src/adapters/secrets/local.ts -->
 [2026-06-22] Modules follow Sliced Onion Architecture — Onion rings live *inside* each modules/<name>/ slice, not as global layer folders; reorganizing into src/controllers/ or src/services/ would break this intentional pattern — src/modules/
+[2026-06-24] Nested routes with two UUID params (e.g. `/repos/:id/conventions/:conventionId`) cannot reuse the shared `IdParams = z.object({ id: z.string().uuid() })`; define a separate params schema with both UUIDs — src/modules/conventions/routes.ts
+[2026-06-24] Zod all-optional object (PATCH body) silently accepts `{}` as valid; use `.refine((b) => b.field1 !== undefined || b.field2 !== undefined)` to reject empty patches at the edge — src/modules/conventions/routes.ts
 
 ## Tool & Library Notes
 
