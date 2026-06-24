@@ -14,6 +14,7 @@ Prune quarterly (stale entries are noise, not signal).
 <!-- Підходи й рішення, що спрацювали -->
 [2026-06-22] Multi-tool agent instructions: put content in AGENTS.md, keep CLAUDE.md as a one-liner `@AGENTS.md` — Claude imports it transparently, Codex/Cursor/Gemini read AGENTS.md directly; one file to maintain across all 5 packages
 [2026-06-22] anthropics/skills README suggests `/plugin marketplace` install, but copying skill folder directly to `.claude/skills/` works without plugin system — used to install skill-creator
+[2026-06-24] Skills are injected BEFORE the diff in the review prompt (## Skills / rules → ## Diff to review order in assemblePrompt) — model reads explicit rules before it reads the code, which is why a linked skill makes findings consistent and specific rather than probabilistic — reviewer-core/src/prompt.ts:109
 
 ## What Doesn't Work
 
@@ -40,6 +41,7 @@ Prune quarterly (stale entries are noise, not signal).
 [2026-06-22] skill-creator `run_loop.py` requires Python ≥ 3.10 — `str | None` union syntax in improve_description.py:20 throws `TypeError: unsupported operand type(s) for |` on macOS system Python 3.9.6; fix: `brew install python@3.12` and use `python3.12 -m scripts.run_loop` — skill-creator/scripts/improve_description.py:20
 [2026-06-22] skill-creator docs use `python -m scripts.*` but macOS ships only `python3`; always use `python3.12 -m scripts.*` (not `python3` alone — that resolves to 3.9 on stock macOS) — skill-creator/scripts/
 [2026-06-23] `eval-viewer/generate_review.py` also requires Python ≥ 3.10 (`dict | None` syntax at line 85) — not in scripts/, so use `python3.12 eval-viewer/generate_review.py <workspace>` directly (not the -m form) — .claude/skills/skill-creator/eval-viewer/generate_review.py:85
+[2026-06-24] Demo PRs that MODIFY existing files only expose changed lines to the citation-grounding gate; a breaking change on an unchanged line is dropped as hallucinated — use NEW fixture files (pure additions) so every line is in a diff hunk and remains groundable — reviewer-core/src/grounding.ts:24
 
 ## Session Notes
 
