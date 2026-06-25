@@ -1,75 +1,177 @@
-# HW2 Pull Request — Conventions Extractor + API Contract Reviewer
+# HW2: Conventions Extractor + API Contract Reviewer
 
-## Summary
+## Коротко
 
-Implements the full Conventions Extractor feature and demonstrates the API Contract Reviewer experiment (with skill vs without skill).
+У цьому PR реалізовано фічу **Conventions Extractor** для DevDigest: застосунок сканує репозиторій, знаходить потенційні code conventions з evidence у реальному коді, дозволяє accept/reject/edit candidates і створює з accepted правил DevDigest skill.
 
-### What was built
+Друга частина домашки — експеримент з **API Contract Reviewer**: створено demo skill і agent-а, який отримує ці правила як linked skill під час PR review. Мета цієї частини — показати, що skill реально потрапляє в prompt reviewer-а і змінює поведінку agent-а.
 
-- **Backend**: `POST /repos/:id/conventions/extract` — samples repo config files + top-12 source files, calls LLM with evidence-first prompt, runs deterministic evidence validation (file exists, line number valid, snippet non-empty, no semantically-weak evidence), persists only validated candidates. Re-scan replaces all previous candidates.
-- **Backend**: `GET /repos/:id/conventions` — workspace-scoped list of candidates.
-- **Backend**: `PATCH /repos/:id/conventions/:id` — accept/reject/edit rule.
-- **Backend**: `POST /repos/:id/conventions/skill-preview` + `POST /repos/:id/conventions/skill` — builds a Markdown skill body from accepted candidates, optionally links to an agent.
-- **Client**: `/repos/[repoId]/conventions` page — Scan/Re-scan, candidate cards with accept/reject/edit, evidence links, bulk state counter, Create skill modal, Link to agent select.
-- **Demo fixtures**: `api-contract-reviewer-skill.md` + `demo-payments-api.ts` + `DEMO.md` for the acceptance experiment.
+## Моя роль і роль Codex
 
----
+Я виконував домашнє завдання як навчальний full stack flow: перевіряв API через `curl`, тестував UI у DevDigest, відбирав якісні convention candidates і запускав reviewer agent-а на PR.
 
-## How to verify
+**Codex використовувався як технічний pair-programming асистент**:
 
-1. Run `./scripts/dev.sh` (Docker Postgres + API + web).
-2. Add a repo (or use the seeded `acme/payments-api`), trigger indexing so `clonePath` is set.
-3. Navigate to **Conventions** in the repo nav → click **Scan** → candidates appear.
-4. Accept 3, reject 1 → Create skill → confirm rejected candidate absent from body.
-5. Follow `specs/convention-extractor-homework/DEMO.md` for the agent experiment.
+- допоміг розбити велику задачу з `TASK.md` на послідовні agent prompts;
+- пояснював backend/API терміни: migrations, `curl`, endpoint-и, `repoId`, preview/create flow;
+- допомагав аналізувати результати extractor-а і відрізняти good evidence від слабкого evidence;
+- допоміг підготувати `DEMO.md`, `PR_DESCRIPTION.md` і manual verification сценарій;
+- допоміг інтерпретувати run trace API Contract Reviewer-а, зокрема випадок `Skills: 1 skill(s) attached`, але `0 candidate finding(s)`.
 
----
+Код і перевірки виконувалися в межах цього DevDigest repo, з ручною валідацією результатів у UI.
 
-## Extractor quality report
+## Що реалізовано
 
-Tested on `goit-agentic-engineering` (TypeScript/Node monorepo):
+### Backend
 
-| Metric | Result |
-|--------|--------|
-| Total candidates after validation | ~10–15 per scan |
-| Candidates with blank/weak evidence (rejected by validator) | ~20–30% |
-| Candidates with clear rule + matching evidence | ~60–70% |
-| Confidence distribution | mostly 0.6–0.85; rarely 1.0 |
+- `GET /repos/:id/conventions` — список convention candidates для repo.
+- `POST /repos/:id/conventions/extract` — extraction pipeline:
+  - бере config файли і source samples через `repoIntel.getConventionSamples`;
+  - викликає LLM зі structured output;
+  - валідовує evidence по реальних файлах;
+  - відкидає candidates без файлу, рядка, snippet або з weak evidence;
+  - re-scan замінює попередні candidates, не накопичує дублікати.
+- `PATCH /repos/:id/conventions/:conventionId` — accept/reject/edit rule.
+- `POST /repos/:id/conventions/skill-preview` — збирає markdown preview skill-а тільки з accepted candidates.
+- `POST /repos/:id/conventions/skill` — створює skill із `source: "extracted"` і, опційно, лінкує його до agent-а.
 
-**Good finds (examples)**:
-- Naming: `PascalCase` interfaces with evidence on a concrete `interface` declaration line
-- Typing: explicit return types on async functions (`Promise<T>`) with evidence on the function signature
-- Imports: `import type` used for type-only imports with evidence on the import line
+### Client
 
-**Known weaknesses**:
-- LLM sometimes cites a line that is semantically near but not exact (e.g. the line above a declaration). Deterministic weak-evidence filter catches most of these.
-- Confidence calibration is better for config-backed rules (e.g. `"semi": true` in ESLint config → 0.95) than for stylistic patterns seen in one file (→ 0.6–0.7).
-- Extractor misses runtime conventions (e.g. "always use `AbortSignal`") because they are patterns in logic, not in declarations.
+- Додано сторінку:
 
----
+  ```text
+  /repos/[repoId]/conventions
+  ```
+
+- UI підтримує:
+  - Run extraction / Re-scan;
+  - список candidates;
+  - category, rule, confidence, code snippet;
+  - GitHub evidence links;
+  - Accept / Reject;
+  - edit rule;
+  - Create skill modal;
+  - Link to agent select.
+
+### Demo / Docs
+
+- `specs/convention-extractor-homework/DEMO.md` — покроковий сценарій demo.
+- `specs/convention-extractor-homework/QUALITY_REPORT.md` — короткий звіт по якості extractor-а.
+- `specs/convention-extractor-homework/fixtures/api-contract-reviewer-skill.md` — demo skill для API Contract Reviewer.
+- `specs/convention-extractor-homework/fixtures/demo-payments-api.ts` — fixture з навмисними breaking API contract changes.
+- `specs/convention-extractor-homework/AGENT_PROMPTS.md` — декомпозиція всієї домашки на послідовні prompts для agent-а.
+
+## Як перевірити Conventions Extractor
+
+1. Запустити DevDigest:
+
+   ```sh
+   ./scripts/dev.sh
+   ```
+
+2. Переконатися, що repo доданий і має `clone_path`:
+
+   ```sh
+   curl http://localhost:3001/repos | jq '.[] | {id, full_name, clone_path}'
+   ```
+
+3. Відкрити у UI:
+
+   ```text
+   http://localhost:3000/repos/<repoId>/conventions
+   ```
+
+4. Натиснути **Run extraction**.
+
+5. Перевірити:
+   - candidates зʼявляються;
+   - evidence має реальний `file:line`;
+   - GitHub evidence link відкриває реальний код;
+   - можна accept/reject;
+   - rejected candidates не потрапляють у skill preview.
+
+6. Створити skill через **Create skill**.
+
+7. Відкрити **Skills** і переконатися, що створився skill типу `convention`.
+
+## Приклади хороших candidates
+
+При ручній перевірці good candidates були ті, де rule і evidence прямо збігаються:
+
+- `Type-only imports use import type`
+  - evidence: `import type { CSSProperties } from "react";`
+- `Barrel files re-export modules using export * from './module'`
+  - evidence: `export * from "./core";`
+- `API errors are normalized and thrown as ApiError`
+  - evidence: `throw new ApiError(`
+- `Single quotes are used for string literals in server-side code`
+  - evidence: import з single quotes у server-side file.
+
+Weak candidates відхилялися вручну, якщо evidence був занадто загальним або не доводив rule.
 
 ## API Contract Reviewer experiment
 
-| Scenario | Result |
-|----------|--------|
-| Agent WITHOUT skill, demo PR with 4 breaking changes | 0 CRITICAL findings; agent says "naming convention refactor" |
-| Agent WITH `api-contract-reviewer-skill` linked | 3–4 CRITICAL findings: missing alias for renamed fields, deleted `account_number`, status code change |
+Було створено agent-а **API Contract Reviewer** і linked skill **API Contract Reviewer Rules**.
 
-The skill body explicitly defines severity levels (CRITICAL vs WARNING) and evidence patterns, which makes the model's findings consistent and specific rather than probabilistic.
+У run trace видно, що skill реально підключається:
 
----
+```text
+Skills: 1 skill(s) attached
+```
+
+Це підтверджує головну інтеграцію:
+
+```text
+PR diff -> reviewer agent -> linked skill in prompt -> LLM review -> findings in UI
+```
+
+Важливе спостереження: якість findings залежить від розміру PR, model і strategy. На великому homework PR (`40+ changed files`, великий one-pass prompt) agent може:
+
+- не знайти expected breaking change;
+- або видати noisy findings по unrelated files.
+
+Це не означає, що skill linking не працює. Це показує реалістичну особливість agentic workflows: prompt/skill/eval треба ітерувати.
+
+Для стабільнішого demo у `DEMO.md` описані два варіанти:
+
+- перемкнути agent strategy на `map-reduce`;
+- або створити маленький demo PR, де diff майже повністю складається з API breaking fixture.
+
+## Що було перевірено
+
+- Backend tests: усі тести проходили після реалізації extraction і skill flow.
+- Manual API verification:
+  - `GET /repos/:id/conventions`;
+  - `POST /repos/:id/conventions/extract`;
+  - `PATCH accepted=true`;
+  - `POST /skill-preview`;
+  - `POST /skill`.
+- Manual UI verification:
+  - Conventions page;
+  - accept/reject;
+  - Create skill modal;
+  - Skills page;
+  - Agent run trace with linked skill.
 
 ## Known limitations
 
-- Extractor only looks at files that `repoIntel.getConventionSamples()` returns (top-12 by rank). Files outside this set are not sampled.
-- Re-scan deletes all previous candidates, including manually edited rules. There is no merge strategy for re-scans.
-- Skill body token count is estimated at creation time; it is not updated if the skill body is later edited.
-- The API Contract Reviewer agent behaviour without skill is non-deterministic — the model may occasionally flag breaking changes even without the skill. The skill makes findings *consistent and specific*, not merely possible.
-
----
+- LLM candidates можуть мати weak semantic evidence, тому accept/reject людиною є важливою частиною flow.
+- Re-scan замінює всі candidates і не зберігає manual edits.
+- Extractor бачить тільки sampled files, а не весь repo.
+- API Contract Reviewer demo skill працює як навчальний proof-of-flow; production quality потребує точнішого prompt-а, focused eval set і стабільнішого demo PR.
+- На великому PR one-pass review може пропустити маленький demo fixture. Для demo краще використовувати `map-reduce` або маленький PR.
 
 ## Demo video
 
-`[link to be added]`
+Link:
 
-See `specs/convention-extractor-homework/DEMO.md` for the full step-by-step script.
+```text
+[to be added]
+```
+
+Покроковий сценарій:
+
+```text
+specs/convention-extractor-homework/DEMO.md
+```
+
