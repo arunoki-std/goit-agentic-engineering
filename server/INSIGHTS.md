@@ -11,6 +11,7 @@ Prune quarterly.
 ## What Works
 
 <!-- Підходи й рішення, що спрацювали в server/ -->
+[2026-06-25] Diversifying convention samples by bumping getConventionSamples n from 12→60 then round-robin across dirGroup() keys is essentially free — getTopFilesByRank already over-fetches Math.max(n*10, 100) rows internally (600 vs 120), so the cost is one larger DB read, not extra LLM calls — src/modules/repo-intel/service.ts:647
 
 ## What Doesn't Work
 
@@ -21,6 +22,7 @@ Prune quarterly.
 [2026-06-24] `SkillsService.create()` hardcodes `source: 'manual'`; `importSkill()` overrides `enabled` to `false` for all non-manual sources — to persist a skill with `source='extracted'` and a caller-controlled `enabled`, bypass both and call `SkillsRepository.insert()` directly — src/modules/skills/service.ts
 [2026-06-24] `STRUCTURAL_ONLY_RE \}[;,)]*` matches only bare `}`, `};`, `})` etc. — `];` (array closer) and `} catch (e) {` (block closer followed by word) both slip through; added `\][;,]*` for array closers, but do NOT add `} catch` universally — it is valid evidence for error-handling rules about catch blocks — src/modules/conventions/service.ts:STRUCTURAL_ONLY_RE
 [2026-06-24] Even with explicit prompt guidance, GPT-4.1 cites `import type { Line } from "./helpers"` as evidence for a naming rule ("Interfaces are named in PascalCase") because the interface name appears in the import line — deterministic fix: reject lines starting with `import`/`export` for naming and typing categories in `isWeakEvidence` — src/modules/conventions/service.ts:isWeakEvidence
+[2026-06-25] getConventionSamples(repoId, 12) with PageRank selects only infrastructure files in practice — import-hub files (src/platform/*, shared types) monopolize all 12 slots; feature module files (src/modules/*) never appear, causing systematic false negatives for service-layer conventions — src/modules/conventions/service.ts:319
 [2026-06-24] LLM extraction prompts without an explicit confidence scale produce `confidence: 1` for every candidate — GPT-4.1 via OpenRouter returned 1.0 on all 17/17 candidates until a four-tier scale with anchor descriptions was added to the system prompt; without anchors the model treats 1.0 as the default numeric value — src/modules/conventions/service.ts:EXTRACTION_SYSTEM_PROMPT
 
 ## Codebase Patterns

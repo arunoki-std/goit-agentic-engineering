@@ -199,6 +199,62 @@ async function validateEvidence(
 }
 
 // ---------------------------------------------------------------------------
+// Directory-stratified sample selection helpers.
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the directory group key for a file path — at most the first 3
+ * directory segments, excluding the filename itself. Root-level files get
+ * the sentinel key 'root'. Capping at 3 segments prevents over-splitting
+ * deep trees while still separating e.g. src/modules/reviews from
+ * src/platform and src/adapters/llm.
+ */
+function dirGroup(filePath: string): string {
+  const parts = filePath.split('/');
+  const dirParts = parts.slice(0, -1);
+  if (dirParts.length === 0) return 'root';
+  return dirParts.slice(0, 3).join('/');
+}
+
+/**
+ * Selects `n` paths from `paths` using a round-robin across directory groups
+ * so that no single directory dominates the sample. Within each group the
+ * input order (PageRank DESC) is preserved, so the highest-ranked file from
+ * each directory is always chosen first.
+ *
+ * Falls back to straight rank order when all paths share one group (flat
+ * repos or when the pool is small enough that no diversification is needed).
+ */
+export function diversifyPaths(paths: string[], n: number): string[] {
+  if (paths.length <= n) return paths;
+
+  const groups = new Map<string, string[]>();
+  for (const p of paths) {
+    const g = dirGroup(p);
+    const arr = groups.get(g);
+    if (arr) arr.push(p);
+    else groups.set(g, [p]);
+  }
+
+  if (groups.size <= 1) return paths.slice(0, n);
+
+  const queues = [...groups.values()];
+  const result: string[] = [];
+  let anyProgress = true;
+  while (result.length < n && anyProgress) {
+    anyProgress = false;
+    for (const queue of queues) {
+      if (result.length >= n) break;
+      if (queue.length > 0) {
+        result.push(queue.shift()!);
+        anyProgress = true;
+      }
+    }
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 
 function toDto(row: ConventionRow): ConventionCandidate {
   return {
@@ -314,10 +370,11 @@ export class ConventionsService {
     }
     const clonePath = repoRow.clonePath;
 
-    const [configFiles, samplePaths] = await Promise.all([
+    const [configFiles, allSamplePaths] = await Promise.all([
       gatherConfigFiles(clonePath),
-      this.container.repoIntel.getConventionSamples(repoId, 12),
+      this.container.repoIntel.getConventionSamples(repoId, 60),
     ]);
+    const samplePaths = diversifyPaths(allSamplePaths, 12);
     const sampleFiles = await gatherSampleFiles(clonePath, samplePaths);
 
     const contextParts: string[] = [];
