@@ -55,7 +55,7 @@
 
 ## 2. Який PR використовувати для API Contract Reviewer
 
-### Рекомендований шлях
+### Рекомендований шлях для звичайної перевірки
 
 Використовуй **реальний homework PR** із цією фічею.
 
@@ -73,6 +73,13 @@ specs/convention-extractor-homework/fixtures/demo-payments-api.ts
 ```
 
 Цей файл спеціально створений як “навчальний breaking API change”, щоб agent мав що знайти.
+
+Але для **demo video** великий homework PR може бути шумним: якщо diff має 40+ files і 100k+ input tokens, cheap/flash модель у `single-pass` може повернути `0 findings`, навіть коли skill підключений. У такому разі це не означає, що skill не працює. Це означає, що demo-файл потонув у великому diff.
+
+Для стабільного відео є два варіанти:
+
+1. Перемкнути agent strategy на **map-reduce**, щоб кожен файл ревʼювився окремо.
+2. Створити окремий маленький demo PR, у якому змінений тільки `demo-payments-api.ts`.
 
 ### Якщо homework PR ще не відкритий
 
@@ -268,9 +275,17 @@ http://localhost:3000/repos/74524481-176f-4b12-9eba-078bcbe77d77/conventions
 
    Або будь-яку модель, яка у тебе реально доступна в Settings.
 
-5. **Skills поки не додавай.**
+5. У Config/Strategy, якщо поле доступне, обери:
 
-6. Save.
+   ```text
+   map-reduce
+   ```
+
+   Чому: на великому homework PR single-pass може відправити 40+ files одним prompt-ом. Це погано для demo, бо маленький API fixture легко губиться серед решти diff. `map-reduce` змушує agent окремо подивитися кожен файл.
+
+6. **Skills поки не додавай.**
+
+7. Save.
 
 Перевірка:
 
@@ -419,6 +434,64 @@ curl http://localhost:3001/skills | jq '.[] | select(.name | contains("API Contr
 - видно, що зі skill agent став більш точним;
 - є посилання на файл/рядок.
 
+Якщо run trace показує:
+
+```text
+Skills: 1 skill(s) attached
+Reviewing 40 changed file(s) in one pass
+all files: 0 candidate finding(s)
+```
+
+то skill підключений правильно, але модель нічого не знайшла в одному великому prompt-і. Зроби одне з двох:
+
+- у Agent editor зміни strategy на `map-reduce` і запусти review ще раз;
+- або створи маленький demo PR із секції нижче.
+
+---
+
+## 10.1 Stable fallback — маленький demo PR
+
+Цей fallback найнадійніший для відео. Він створює PR, у якому diff майже повністю складається з одного breaking API fixture.
+
+1. Переконайся, що у тебе немає незакомічених важливих змін, або закоміть/stash їх.
+
+2. Створи branch від `main`:
+
+   ```sh
+   git switch main
+   git pull --ff-only
+   git switch -c demo/api-contract-breaking-change
+   ```
+
+3. Додай тільки demo fixture з `lab-2`:
+
+   ```sh
+   git checkout lab-2 -- specs/convention-extractor-homework/fixtures/demo-payments-api.ts
+   git add specs/convention-extractor-homework/fixtures/demo-payments-api.ts
+   git commit -m "Demo breaking API contract change"
+   git push -u origin demo/api-contract-breaking-change
+   ```
+
+4. Відкрий PR:
+
+   ```sh
+   gh pr create \
+     --base main \
+     --head demo/api-contract-breaking-change \
+     --title "Demo: breaking payments API contract" \
+     --body "Small demo PR for API Contract Reviewer. Intentionally renames/removes response fields and changes a success status code."
+   ```
+
+5. У DevDigest:
+
+   - Pull Requests → Refresh;
+   - відкрий цей маленький demo PR;
+   - run without skill;
+   - link skill;
+   - run with skill.
+
+Очікування: маленький PR має бути значно стабільнішим, бо agent бачить саме `demo-payments-api.ts`, а не 40+ unrelated files.
+
 ---
 
 ## 11. Що саме порівнювати
@@ -496,9 +569,28 @@ curl http://localhost:3001/repos | jq '.[] | {id, full_name, clone_path}'
 1. Перезапусти review тим самим agent-ом.
 2. Перевір, що skill enabled і linked.
 3. Відкрий run trace, якщо доступний, і переконайся, що skill body є у prompt.
-4. Спробуй сильнішу модель.
+4. Якщо trace каже `Reviewing ... in one pass` на великому PR, зміни agent strategy на `map-reduce`.
+5. Спробуй сильнішу модель.
+6. Якщо demo все ще нестабільне, створи маленький demo PR із секції 10.1.
 
 Для demo достатньо, щоб зі skill було явно краще, ніж без skill.
+
+### Trace каже `0 candidate finding(s)`, але skill attached
+
+Це означає: проблема не в grounding і не в link-у skill-а. Модель просто не створила жодного finding.
+
+Перевір:
+
+1. У trace відкрий **Prompt assembly**.
+2. Пошукай `demo-payments-api.ts`.
+3. Якщо файлу нема в prompt:
+   - PR diff не містить fixture;
+   - натисни Pull Requests → Refresh;
+   - перевір Files changed у DevDigest.
+4. Якщо файл є в prompt, але findings = 0:
+   - diff завеликий або модель заслабка;
+   - постав `map-reduce`;
+   - або використовуй маленький demo PR.
 
 ### Findings не мають file:line citation
 
@@ -530,4 +622,3 @@ arunoki-std/goit-agentic-engineering
 - skill linked у Agent editor → Skills;
 - agent enabled;
 - review запускається саме цим agent-ом, а не іншим.
-
