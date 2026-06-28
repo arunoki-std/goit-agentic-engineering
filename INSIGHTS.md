@@ -14,6 +14,7 @@ Prune quarterly (stale entries are noise, not signal).
 <!-- Підходи й рішення, що спрацювали -->
 [2026-06-22] Multi-tool agent instructions: put content in AGENTS.md, keep CLAUDE.md as a one-liner `@AGENTS.md` — Claude imports it transparently, Codex/Cursor/Gemini read AGENTS.md directly; one file to maintain across all 5 packages
 [2026-06-22] anthropics/skills README suggests `/plugin marketplace` install, but copying skill folder directly to `.claude/skills/` works without plugin system — used to install skill-creator
+[2026-06-24] Skills are injected BEFORE the diff in the review prompt (## Skills / rules → ## Diff to review order in assemblePrompt) — model reads explicit rules before it reads the code, which is why a linked skill makes findings consistent and specific rather than probabilistic — reviewer-core/src/prompt.ts:109
 
 ## What Doesn't Work
 
@@ -40,6 +41,7 @@ Prune quarterly (stale entries are noise, not signal).
 [2026-06-22] skill-creator `run_loop.py` requires Python ≥ 3.10 — `str | None` union syntax in improve_description.py:20 throws `TypeError: unsupported operand type(s) for |` on macOS system Python 3.9.6; fix: `brew install python@3.12` and use `python3.12 -m scripts.run_loop` — skill-creator/scripts/improve_description.py:20
 [2026-06-22] skill-creator docs use `python -m scripts.*` but macOS ships only `python3`; always use `python3.12 -m scripts.*` (not `python3` alone — that resolves to 3.9 on stock macOS) — skill-creator/scripts/
 [2026-06-23] `eval-viewer/generate_review.py` also requires Python ≥ 3.10 (`dict | None` syntax at line 85) — not in scripts/, so use `python3.12 eval-viewer/generate_review.py <workspace>` directly (not the -m form) — .claude/skills/skill-creator/eval-viewer/generate_review.py:85
+[2026-06-24] Demo PRs that MODIFY existing files only expose changed lines to the citation-grounding gate; a breaking change on an unchanged line is dropped as hallucinated — use NEW fixture files (pure additions) so every line is in a diff hunk and remains groundable — reviewer-core/src/grounding.ts:24
 
 ## Session Notes
 
@@ -52,3 +54,10 @@ Prune quarterly (stale entries are noise, not signal).
 ## Open Questions
 
 <!-- Що лишилось нез'ясованим — питання без відповіді -->
+
+## Conventions Extractor
+
+[2026-06-24] `z.number().transform(v => Math.min(1, Math.max(0, v)))` lets `MockLLMProvider.completeStructured` accept out-of-range confidence (e.g. 1.5) via `safeParse` — the transform runs before the result is returned, so the test receives the clamped value without throwing — server/src/modules/conventions/service.ts:31
+[2026-06-24] Evidence validation reads actual files from `clonePath` with `node:fs/promises readFile`; IT tests write real files into `os.tmpdir()` via `mkdtemp` and set `clonePath` on the DB row — no fs mocking needed — server/test/conventions-extract.it.test.ts
+[2026-06-24] Re-scan policy: `replaceAll` deletes all existing candidates for `(workspaceId, repoId)` then inserts new ones in one shot — simple, no accumulation, createdAt on new rows serves as scan timestamp — server/src/modules/conventions/repository.ts
+[2026-06-24] Conventions → skill → agent flow: backend `POST /repos/:id/conventions/skill` already accepted `agent_id` and called `agentsService.linkSkill`; only the client modal was missing the select — `CreateConventionSkillInput` in `hooks/conventions.ts` already had `agent_id?: string`; adding `useAgents()` + SelectInput completed the wiring without touching the review engine — client/src/app/repos/[repoId]/conventions/_components/CreateSkillModal/CreateSkillModal.tsx

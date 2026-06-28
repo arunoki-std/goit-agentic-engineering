@@ -1,0 +1,1242 @@
+ ▐▛███▜▌   Claude Code v2.1.186
+▝▜█████▛▘  Sonnet 4.6 · Claude Pro
+  ▘▘ ▝▝    ~/Projects/goit-agentic-engineering/server
+
+
+❯ /clear                                                                        
+
+❯ Додай backend API для створення skill із accepted convention candidates.      
+                                                                                
+  Контекст:                                                                     
+  - Skills module уже є: server/src/modules/skills/.                            
+  - SkillsRepository підтримує source='extracted' і evidenceFiles.              
+  - Agents module уже вміє лінкувати skills через POST /agents/:id/skills.      
+  - Conventions candidates уже зберігаються і мають accepted.                   
+                                                                                
+  Задача:                                                                       
+  1. Додай endpoint для preview:                                                
+     - POST /repos/:id/conventions/skill-preview                                
+     - бере accepted candidates або explicit candidate_ids з body;              
+     - повертає default name, description, type='convention', enabled=true,     
+  body markdown, token_count.                                                   
+  2. Додай endpoint для create:                                                 
+     - POST /repos/:id/conventions/skill                                        
+     - body: name, description, type, enabled, body, optional agent_id.         
+     - створює skill через SkillsService/SkillsRepository з source='extracted'  
+  і evidenceFiles.                                                              
+     - якщо agent_id переданий, лінкує skill до агента через AgentsService      
+  існуючим механізмом.                                                          
+  3. Markdown body має бути придатним для reviewer agent:                       
+     - заголовок з repo name;                                                   
+     - коротка інструкція "Flag changes that violate these rules and cite       
+  file:line";                                                                   
+     - по секції на кожну convention;                                           
+     - evidence file:line і snippet для traceability.                           
+  4. Rejected candidates не мають потрапляти у preview/create.                  
+  5. Додай tests:                                                               
+     - preview включає тільки accepted;                                         
+     - create зберігає skill із source extracted;                               
+     - rejected не потрапляє в markdown;                                        
+     - optional agent link створює agent_skill link.                            
+                                                                                
+  Обмеження:                                                                    
+  - Не роби UI.                                                                 
+  - Не дублюй логіку SkillsService, використовуй існуючі репозиторії/сервіси.   
+                                                                                
+  Перевірки:                                                                    
+  - cd server && pnpm typecheck                                                 
+  - cd server && pnpm test -- conventions                                       
+  - cd server && pnpm test -- skills                                            
+                                                                                
+  Після виконання коротко напиши:                                               
+  - shape preview response;                                                     
+  - shape create request;                                                       
+  - як agent_id лінкує skill.                                                   
+
+⏺ I'll explore the codebase in parallel to understand the existing structure
+  before planning.
+
+⏺ 3 Explore agents finished (ctrl+o to expand)
+   ├ Explore skills and conventions modules · 26 tool uses · 34.5k tokens
+   │ ⎿  Done
+   ├ Explore agents module and linking mechanism · 14 tool uses · 27.7k tokens
+   │ ⎿  Done
+   └ Explore tests and DB schema for conventions and skills · 19 tool uses · 30.1k tokens
+     ⎿  Done
+
+⏺ I need one more targeted exploration before designing the plan.
+
+⏺ Explore(Explore DI container, token counting, and repos schema)
+  ⎿  Done (17 tool uses · 36.1k tokens · 38s)
+  (ctrl+o to expand)
+
+⏺ Now I have all the context needed to write the plan. Let me design it.
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ User approved Claude's plan
+  ⎿  Plan saved to: ~/.claude/plans/backend-api-hashed-russell.md · /plan to 
+     edit
+     Plan: Backend API — Convention Skill Preview & Create
+
+     Context
+
+     The conventions module already extracts and stores convention candidates
+     from repos, and users can accept/reject them via PATCH. Now we need two new
+     endpoints that turn those accepted candidates into a Skill record
+     (source='extracted') that a reviewer agent can use. Agent linking is
+     optional but supported via the existing AgentsService.linkSkill()
+     mechanism.
+
+     ---
+     New Endpoints
+
+     POST /repos/:id/conventions/skill-preview
+
+     Stateless — builds and returns the markdown and metadata without persisting
+     anything.
+
+     Request body:
+     { candidate_ids?: string[] }  // if omitted → use all accepted for repo
+
+     Response:
+     {
+       name: string;         // "{owner}/{name} Conventions"
+       description: string;  // "Convention rules extracted from {owner}/{name}"
+       type: "convention";
+       enabled: true;
+       body: string;         // full markdown (see format below)
+       token_count: number;
+     }
+
+     Returns 422 if there are no accepted candidates (after applying the
+     candidate_ids filter).
+
+     ---
+     POST /repos/:id/conventions/skill
+
+     Creates the skill in the DB and optionally links it to an agent.
+
+     Request body:
+     {
+       name: string;
+       description: string;
+       type: "rubric" | "convention" | "security" | "custom";
+       enabled: boolean;
+       body: string;
+       agent_id?: string;  // UUID — if present, links skill to agent
+     }
+
+     Response: Full Skill DTO (same shape as GET /skills/:id).
+
+     When agent_id is provided: calls AgentsService.linkSkill(workspaceId, 
+     agentId, skill.id). Returns 404 if the agent doesn't exist.
+
+     ---
+     Markdown Format
+
+     Grouped by category (null → "General"). Each rule gets evidence for
+     traceability.
+
+     # owner/repo Conventions
+
+     Flag changes that violate these rules and cite file:line when raising an
+     issue.
+
+     ## naming
+
+     - Use camelCase for variable names
+
+       Evidence: `src/utils/format.ts:12`
+       const formattedValue = ...
+
+     ## formatting
+
+     - Always use trailing commas in multi-line objects
+
+     Evidence: `src/config/index.ts:8`
+       const config = {
+
+
+     Rejected candidates are never included — only rows where accepted = true.
+
+     evidenceFiles stored on the skill = unique non-null evidencePath values
+     across accepted candidates.
+
+     ---
+     Implementation
+
+     1. server/src/modules/conventions/repository.ts
+
+     Add method:
+     async getRepoMeta(workspaceId: string, repoId: string): Promise<{ name:
+     string; fullName: string } | undefined>
+     Pattern: mirrors existing getRepoClonable() — inner join repos on repoId +
+     workspaceId guard, return { name, fullName }.
+
+     2. server/src/modules/conventions/service.ts
+
+     Add two methods. Both instantiate SkillsRepository and AgentsService from
+     this.container (same pattern already used throughout the codebase).
+
+     previewSkill(workspaceId, repoId, candidateIds?)
+     1. this.repo.getRepoMeta(workspaceId, repoId) → 404 if missing
+     2. this.repo.list(workspaceId, repoId) → filter to accepted = true
+     3. If candidateIds provided → further filter by those IDs
+     4. 422 if resulting list is empty
+     5. buildMarkdown(fullName, accepted) → markdown string
+     6. container.tokenizer.count(body) → token_count
+     7. Return preview shape (no DB write)
+
+     createSkill(workspaceId, repoId, input)
+     1. this.repo.list(workspaceId, repoId) → filter to accepted = true
+     2. evidenceFiles = [...new Set(accepted.map(c => 
+     c.evidencePath).filter(Boolean))]
+     3. skillsRepo.insert({ workspaceId, source: 'extracted', evidenceFiles, 
+     ...input }) — use SkillsRepository directly (not SkillsService.create()
+     which forces source='manual', and not importSkill() which overrides
+     enabled)
+     4. Compute token count, return toSkillDto(row, tokenCount) — reuse
+     toSkillDto from server/src/modules/skills/helpers.ts
+
+     buildMarkdown(fullName, candidates) — private method on service (or
+     extracted to a pure helper function in the conventions module). Groups by
+     category, formats each rule with evidence.
+
+     3. server/src/modules/conventions/routes.ts
+
+     Register both new static routes before the existing PATCH 
+     /repos/:id/conventions/:conventionId route (same principle as extract being
+     registered before :conventionId).
+
+     // Zod schemas
+     const SkillPreviewBody = z.object({
+       candidate_ids: z.array(z.string().uuid()).optional(),
+     });
+
+     const CreateConventionSkillBody = z.object({
+       name: z.string().min(1),
+       description: z.string(),
+       type: SkillType,        // imported from @devdigest/shared
+       enabled: z.boolean(),
+       body: z.string().min(1),
+       agent_id: z.string().uuid().optional(),
+     });
+
+     // Handlers
+     app.post('/repos/:id/conventions/skill-preview', ..., async (req) => {
+       const { workspaceId } = await getContext(...);
+       return service.previewSkill(workspaceId, req.params.id,
+     req.body.candidate_ids);
+     });
+
+     app.post('/repos/:id/conventions/skill', ..., async (req) => {
+       const { workspaceId } = await getContext(...);
+       const { agent_id, ...skillInput } = req.body;
+       const skill = await service.createSkill(workspaceId, req.params.id,
+     skillInput);
+       if (agent_id) {
+         const agentsService = new AgentsService(app.container);
+         const links = await agentsService.linkSkill(workspaceId, agent_id,
+     skill.id);
+         if (!links) throw new NotFoundError('Agent not found');
+       }
+       return skill;
+     });
+
+     ---
+     Tests
+
+     server/test/conventions.test.ts (hermetic — no DB)
+
+     Uses app.inject() with a mock service via buildApp overrides (or mock
+     container at unit level):
+
+     1. Preview only accepted — inject list with 2 accepted + 1 rejected; assert
+     response body contains rules for accepted, not rejected
+     2. Rejected not in markdown — assert rejected rule text is absent from body
+     field in preview response
+     3. Preview with candidate_ids filter — provide subset; assert only those
+     appear
+     4. 422 when no accepted — all candidates rejected → preview returns 422
+
+     server/test/conventions.it.test.ts (integration — testcontainers Postgres)
+
+     Uses real DB via startPg() + seed() helpers (existing pattern):
+
+     1. Create saves source=extracted — call POST /repos/:id/conventions/skill;
+     query skills table; assert source = 'extracted'
+     2. Agent link created — provide agent_id in create body; query agent_skills
+     table; assert row exists with correct agent_id + skill_id
+     3. evidenceFiles populated — assert skill row has non-empty evidence_files
+     JSONB matching accepted candidates' paths
+
+     ---
+     Key Reuse
+
+     - SkillsRepository.insert() — server/src/modules/skills/repository.ts
+     - toSkillDto() — server/src/modules/skills/helpers.ts
+     - AgentsService.linkSkill() — server/src/modules/agents/service.ts
+     - container.tokenizer.count() — server/src/platform/container.ts
+     - ConventionsRepository.list() — existing; already filters by workspaceId +
+     repoId
+
+     ---
+     Verification
+
+     cd server && pnpm typecheck
+     cd server && pnpm test -- conventions
+     cd server && pnpm test -- skills   # regression check — skills tests must 
+     still pass
+
+     Manual smoke test (requires running server + seeded DB with accepted
+     conventions):
+     POST /repos/{id}/conventions/skill-preview   → 200 with body, token_count
+     POST /repos/{id}/conventions/skill           → 200 with id,
+     source=extracted
+     POST /repos/{id}/conventions/skill (+ agent_id) → 200; verify GET
+     /agents/{id}/skills includes new skill
+
+⏺ Now I'll implement the plan. Let me read all the key files first.
+
+  Read 8 files (ctrl+o to expand)
+  ⎿  Loaded server/CLAUDE.md
+  ⎿  Loaded server/AGENTS.md
+
+⏺ Now let me also check the shared contracts for SkillType and any error types:
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ I have all the context I need. Now I'll implement the changes in order.
+
+  Step 1: Add getRepoMeta to ConventionsRepository
+
+⏺ Update(src/modules/conventions/repository.ts)
+  ⎿  Added 11 lines
+      66      return row;
+      67    }
+      68  
+      69 +  async getRepoMeta(                                           
+      70 +    workspaceId: string,                                       
+      71 +    repoId: string,                                            
+      72 +  ): Promise<{ name: string; fullName: string } | undefined> { 
+      73 +    const [row] = await this.db                                
+      74 +      .select({ name: t.repos.name, fullName: t.repos.fullName 
+         +})                                                             
+      75 +      .from(t.repos)                                           
+      76 +      .where(and(eq(t.repos.workspaceId, workspaceId), eq(t.rep
+         +os.id, repoId)));                                              
+      77 +    return row;                                                
+      78 +  }                                                            
+      79 +                                                               
+      80    /**
+      81     * Re-scan policy: delete all previous candidates for this re
+          po, then insert
+      82     * the new validated set. Each extraction run is authoritativ
+          e — stale
+
+⏺ Step 2: Update ConventionsService with previewSkill, createSkill, and 
+  buildMarkdown
+
+⏺ Update(src/modules/conventions/service.ts)
+  ⎿  Added 4 lines, removed 2 lines
+       1  import { readFile, readdir } from 'node:fs/promises';
+       2  import { join } from 'node:path';
+       3  import { z } from 'zod';
+       4 -import type { ConventionCandidate } from '@devdigest/shared';  
+       4 +import type { ConventionCandidate, Skill, SkillType } from '@de
+         +vdigest/shared';                                               
+       5  import type { Container } from '../../platform/container.js';
+       6 -import { NotFoundError } from '../../platform/errors.js';      
+       6 +import { NotFoundError, ValidationError } from '../../platform/
+         +errors.js';                                                    
+       7 +import { SkillsRepository } from '../skills/repository.js';    
+       8 +import { toSkillDto } from '../skills/helpers.js';             
+       9  import {
+      10    ConventionsRepository,
+      11    type ConventionRow,
+
+⏺ Now add the buildMarkdown helper and the two new service methods after the
+  existing extract method:
+
+⏺ Update(src/modules/conventions/service.ts)
+  ⎿  Added 58 lines
+      213    };
+      214  }
+      215  
+      216 +// -----------------------------------------------------------
+          +----------------                                              
+      217 +// Markdown builder for convention skills.                    
+      218 +// Groups accepted candidates by category and emits evidence-c
+          +ited sections.                                                
+      219 +// -----------------------------------------------------------
+          +----------------                                              
+      220 +                                                              
+      221 +export function buildConventionMarkdown(fullName: string, cand
+          +idates: ConventionRow[]): string {                            
+      222 +  const accepted = candidates.filter((c) => c.accepted);      
+      223 +                                                              
+      224 +  const byCategory = new Map<string, ConventionRow[]>();      
+      225 +  for (const c of accepted) {                                 
+      226 +    const cat = c.category ?? 'General';                      
+      227 +    if (!byCategory.has(cat)) byCategory.set(cat, []);        
+      228 +    byCategory.get(cat)!.push(c);                             
+      229 +  }                                                           
+      230 +                                                              
+      231 +  const lines: string[] = [                                   
+      232 +    `# ${fullName} Conventions`,                              
+      233 +    '',                                                       
+      234 +    'Flag changes that violate these rules and cite file:line 
+          +when raising an issue.',                                      
+      235 +    '',                                                       
+      236 +  ];                                                          
+      237 +                                                              
+      238 +  for (const [cat, rules] of byCategory) {                    
+      239 +    lines.push(`## ${cat}`, '');                              
+      240 +    for (const r of rules) {                                  
+      241 +      lines.push(`- ${r.rule}`);                              
+      242 +      if (r.evidencePath && r.evidenceLine != null) {         
+      243 +        lines.push('', `  Evidence: \`${r.evidencePath}:${r.ev
+          +idenceLine}\``);                                              
+      244 +        if (r.evidenceSnippet) {                              
+      245 +          lines.push('  ```', `  ${r.evidenceSnippet}`, '  ```
+          +');                                                           
+      246 +        }                                                     
+      247 +      }                                                       
+      248 +      lines.push('');                                         
+      249 +    }                                                         
+      250 +  }                                                           
+      251 +                                                              
+      252 +  return lines.join('\n');                                    
+      253 +}                                                             
+      254 +                                                              
+      255 +export interface SkillPreview {                               
+      256 +  name: string;                                               
+      257 +  description: string;                                        
+      258 +  type: 'convention';                                         
+      259 +  enabled: true;                                              
+      260 +  body: string;                                               
+      261 +  token_count: number;                                        
+      262 +}                                                             
+      263 +                                                              
+      264 +export interface CreateConventionSkillInput {                 
+      265 +  name: string;                                               
+      266 +  description: string;                                        
+      267 +  type: SkillType;                                            
+      268 +  enabled: boolean;                                           
+      269 +  body: string;                                               
+      270 +}                                                             
+      271 +                                                              
+      272 +// -----------------------------------------------------------
+          +----------------                                              
+      273 +                                                              
+      274  export class ConventionsService {
+      275    private repo: ConventionsRepository;
+      276  
+⏺ Now add previewSkill and createSkill methods at the end of the class (before
+  the closing brace):
+
+⏺ Update(src/modules/conventions/service.ts)
+  ⎿  Added 58 lines
+      345      const saved = await this.repo.replaceAll(workspaceId, repo
+           Id, validated);
+      346      return saved.map(toDto);
+      347    }
+      348 +                                                              
+      349 +  async previewSkill(                                         
+      350 +    workspaceId: string,                                      
+      351 +    repoId: string,                                           
+      352 +    candidateIds?: string[],                                  
+      353 +  ): Promise<SkillPreview> {                                  
+      354 +    const repoMeta = await this.repo.getRepoMeta(workspaceId, 
+          +repoId);                                                      
+      355 +    if (!repoMeta) throw new NotFoundError('Repo not found'); 
+      356 +                                                              
+      357 +    const all = await this.repo.list(workspaceId, repoId);    
+      358 +    let accepted = all.filter((c) => c.accepted);             
+      359 +    if (candidateIds !== undefined) {                         
+      360 +      const idSet = new Set(candidateIds);                    
+      361 +      accepted = accepted.filter((c) => idSet.has(c.id));     
+      362 +    }                                                         
+      363 +    if (accepted.length === 0) {                              
+      364 +      throw new ValidationError('No accepted candidates found 
+          +for this repo');                                              
+      365 +    }                                                         
+      366 +                                                              
+      367 +    const body = buildConventionMarkdown(repoMeta.fullName, ac
+          +cepted);                                                      
+      368 +    const tokenCount = this.container.tokenizer.count(body);  
+      369 +                                                              
+      370 +    return {                                                  
+      371 +      name: `${repoMeta.fullName} Conventions`,               
+      372 +      description: `Convention rules extracted from ${repoMeta
+          +.fullName}`,                                                  
+      373 +      type: 'convention',                                     
+      374 +      enabled: true,                                          
+      375 +      body,                                                   
+      376 +      token_count: tokenCount,                                
+      377 +    };                                                        
+      378 +  }                                                           
+      379 +                                                              
+      380 +  async createSkill(                                          
+      381 +    workspaceId: string,                                      
+      382 +    repoId: string,                                           
+      383 +    input: CreateConventionSkillInput,                        
+      384 +  ): Promise<Skill> {                                         
+      385 +    const all = await this.repo.list(workspaceId, repoId);    
+      386 +    const accepted = all.filter((c) => c.accepted);           
+      387 +    const evidenceFiles = [                                   
+      388 +      ...new Set(accepted.map((c) => c.evidencePath).filter((p
+          +): p is string => p != null)),                                
+      389 +    ];                                                        
+      390 +                                                              
+      391 +    const skillsRepo = new SkillsRepository(this.container.db)
+          +;                                                             
+      392 +    const row = await skillsRepo.insert({                     
+      393 +      workspaceId,                                            
+      394 +      name: input.name,                                       
+      395 +      description: input.description,                         
+      396 +      type: input.type,                                       
+      397 +      source: 'extracted',                                    
+      398 +      body: input.body,                                       
+      399 +      enabled: input.enabled,                                 
+      400 +      evidenceFiles: evidenceFiles.length > 0 ? evidenceFiles 
+          +: undefined,                                                  
+      401 +    });                                                       
+      402 +                                                              
+      403 +    const tokenCount = this.container.tokenizer.count(row.body
+          +);                                                            
+      404 +    return toSkillDto(row, tokenCount);                       
+      405 +  }                                                           
+      406  }
+
+⏺ Step 3: Add new routes to conventions/routes.ts
+
+⏺ Update(src/modules/conventions/routes.ts)
+  ⎿  Added 2 lines
+       1  import type { FastifyInstance } from 'fastify';
+       2  import type { ZodTypeProvider } from 'fastify-type-provider-zod
+          ';
+       3  import { z } from 'zod';
+       4 +import { SkillType } from '@devdigest/shared';                 
+       5  import { getContext } from '../_shared/context.js';
+       6  import { NotFoundError } from '../../platform/errors.js';
+       7 +import { AgentsService } from '../agents/service.js';          
+       8  import { ConventionsService } from './service.js';
+       9  
+      10  const RepoParams = z.object({ id: z.string().uuid() });
+
+⏺ Update(src/modules/conventions/routes.ts)
+  ⎿  Added 13 lines
+      23      message: 'At least one of accepted or rule must be provided
+          ',
+      24    });
+      25  
+      26 +const SkillPreviewBody = z.object({                            
+      27 +  candidate_ids: z.array(z.string().uuid()).optional(),        
+      28 +});                                                            
+      29 +                                                               
+      30 +const CreateConventionSkillBody = z.object({                   
+      31 +  name: z.string().min(1),                                     
+      32 +  description: z.string(),                                     
+      33 +  type: SkillType,                                             
+      34 +  enabled: z.boolean(),                                        
+      35 +  body: z.string().min(1),                                     
+      36 +  agent_id: z.string().uuid().optional(),                      
+      37 +});                                                            
+      38 +                                                               
+      39  /**
+      40   * Conventions module.
+      41   *   GET  /repos/:id/conventions                      → list ca
+          ndidates (workspace-scoped)
+
+⏺ Now add the two new route handlers before the PATCH handler:
+
+⏺ Update(src/modules/conventions/routes.ts)
+  ⎿  Added 25 lines
+      60      return service.extract(workspaceId, req.params.id);
+      61    });
+      62  
+      63 +  app.post(                                                    
+      64 +    '/repos/:id/conventions/skill-preview',                    
+      65 +    { schema: { params: RepoParams, body: SkillPreviewBody } },
+      66 +    async (req) => {                                           
+      67 +      const { workspaceId } = await getContext(app.container, r
+         +eq);                                                           
+      68 +      return service.previewSkill(workspaceId, req.params.id, r
+         +eq.body.candidate_ids);                                        
+      69 +    },                                                         
+      70 +  );                                                           
+      71 +                                                               
+      72 +  app.post(                                                    
+      73 +    '/repos/:id/conventions/skill',                            
+      74 +    { schema: { params: RepoParams, body: CreateConventionSkill
+         +Body } },                                                      
+      75 +    async (req) => {                                           
+      76 +      const { workspaceId } = await getContext(app.container, r
+         +eq);                                                           
+      77 +      const { agent_id, ...skillInput } = req.body;            
+      78 +      const skill = await service.createSkill(workspaceId, req.
+         +params.id, skillInput);                                        
+      79 +      if (agent_id) {                                          
+      80 +        const agentsService = new AgentsService(app.container);
+      81 +        const links = await agentsService.linkSkill(workspaceId
+         +, agent_id, skill.id);                                         
+      82 +        if (!links) throw new NotFoundError('Agent not found');
+      83 +      }                                                        
+      84 +      return skill;                                            
+      85 +    },                                                         
+      86 +  );                                                           
+      87 +                                                               
+      88    app.patch(
+      89      '/repos/:id/conventions/:conventionId',
+      90      { schema: { params: ConventionParams, body: PatchBody } },
+
+⏺ Step 4: Add hermetic tests to conventions.test.ts
+
+⏺ Update(test/conventions.test.ts)
+  ⎿  Added 138 lines, removed 1 line
+       1  import { describe, it, expect, afterAll } from 'vitest';
+       2  import { buildApp } from '../src/app.js';
+       3  import { loadConfig } from '../src/platform/config.js';
+       4 +import { buildConventionMarkdown } from '../src/modules/convent
+         +ions/service.js';                                              
+       5  
+       6  /**
+       7   * Hermetic conventions route tests — no DB required.
+       7 - * Validates schema enforcement (UUID params, body shape).     
+       8 + * Validates schema enforcement (UUID params, body shape) and m
+         +arkdown logic.                                                 
+       9   */
+      10  const config = loadConfig({ ...process.env, NODE_ENV: 'test' } 
+          as NodeJS.ProcessEnv);
+      11  
+     ...
+       39      expect(res.statusCode).toBe(422);
+       40      await app.close();
+       41    });
+       42 +                                                              
+       43 +  it('POST /repos/<non-uuid>/conventions/skill-preview → 422',
+          + async () => {                                                
+       44 +    const app = await buildApp({ config });                   
+       45 +    const res = await app.inject({                            
+       46 +      method: 'POST',                                         
+       47 +      url: '/repos/not-a-uuid/conventions/skill-preview',     
+       48 +      payload: {},                                            
+       49 +    });                                                       
+       50 +    expect(res.statusCode).toBe(422);                         
+       51 +    await app.close();                                        
+       52 +  });                                                         
+       53 +                                                              
+       54 +  it('POST /repos/<uuid>/conventions/skill-preview with invali
+          +d candidate_ids → 422', async () => {                         
+       55 +    const app = await buildApp({ config });                   
+       56 +    const res = await app.inject({                            
+       57 +      method: 'POST',                                         
+       58 +      url: '/repos/00000000-0000-0000-0000-000000000001/conven
+          +tions/skill-preview',                                         
+       59 +      payload: { candidate_ids: ['not-a-uuid'] },             
+       60 +    });                                                       
+       61 +    expect(res.statusCode).toBe(422);                         
+       62 +    await app.close();                                        
+       63 +  });                                                         
+       64 +                                                              
+       65 +  it('POST /repos/<uuid>/conventions/skill with missing requir
+          +ed fields → 422', async () => {                               
+       66 +    const app = await buildApp({ config });                   
+       67 +    const res = await app.inject({                            
+       68 +      method: 'POST',                                         
+       69 +      url: '/repos/00000000-0000-0000-0000-000000000001/conven
+          +tions/skill',                                                 
+       70 +      payload: { name: 'test' },                              
+       71 +    });                                                       
+       72 +    expect(res.statusCode).toBe(422);                         
+       73 +    await app.close();                                        
+       74 +  });                                                         
+       75 +                                                              
+       76 +  it('POST /repos/<uuid>/conventions/skill with invalid agent_
+          +id → 422', async () => {                                      
+       77 +    const app = await buildApp({ config });                   
+       78 +    const res = await app.inject({                            
+       79 +      method: 'POST',                                         
+       80 +      url: '/repos/00000000-0000-0000-0000-000000000001/conven
+          +tions/skill',                                                 
+       81 +      payload: {                                              
+       82 +        name: 'test',                                         
+       83 +        description: 'desc',                                  
+       84 +        type: 'convention',                                   
+       85 +        enabled: true,                                        
+       86 +        body: 'body',                                         
+       87 +        agent_id: 'not-a-uuid',                               
+       88 +      },                                                      
+       89 +    });                                                       
+       90 +    expect(res.statusCode).toBe(422);                         
+       91 +    await app.close();                                        
+       92 +  });                                                         
+       93  });
+       94 +                                                              
+       95 +describe('buildConventionMarkdown', () => {                   
+       96 +  const now = new Date();                                     
+       97 +                                                              
+       98 +  const makeRow = (overrides: Partial<{                       
+       99 +    id: string; accepted: boolean; category: string | null; ru
+          +le: string;                                                   
+      100 +    evidencePath: string | null; evidenceLine: number | null; 
+          +evidenceSnippet: string | null;                               
+      101 +  }>) => ({                                                   
+      102 +    id: '00000000-0000-0000-0000-000000000001',               
+      103 +    workspaceId: 'ws',                                        
+      104 +    repoId: 'repo',                                           
+      105 +    accepted: true,                                           
+      106 +    category: 'naming',                                       
+      107 +    rule: 'Use camelCase',                                    
+      108 +    evidencePath: 'src/index.ts',                             
+      109 +    evidenceLine: 5,                                          
+      110 +    evidenceSnippet: 'const myVar = 1;',                      
+      111 +    confidence: 0.9,                                          
+      112 +    createdAt: now,                                           
+      113 +    ...overrides,                                             
+      114 +  });                                                         
+      115 +                                                              
+      116 +  it('includes only accepted candidates', () => {             
+      117 +    const candidates = [                                      
+      118 +      makeRow({ accepted: true, rule: 'Use camelCase' }),     
+      119 +      makeRow({ id: '00000000-0000-0000-0000-000000000002', ac
+          +cepted: false, rule: 'Rejected rule' }),                      
+      120 +    ];                                                        
+      121 +    const md = buildConventionMarkdown('acme/repo', candidates
+          +);                                                            
+      122 +    expect(md).toContain('Use camelCase');                    
+      123 +    expect(md).not.toContain('Rejected rule');                
+      124 +  });                                                         
+      125 +                                                              
+      126 +  it('rejected candidates do not appear in markdown body', () 
+          +=> {                                                          
+      127 +    const candidates = [                                      
+      128 +      makeRow({ accepted: false, rule: 'Do not use var' }),   
+      129 +      makeRow({ accepted: false, rule: 'No any types' }),     
+      130 +    ];                                                        
+      131 +    const md = buildConventionMarkdown('acme/repo', candidates
+          +);                                                            
+      132 +    expect(md).not.toContain('Do not use var');               
+      133 +    expect(md).not.toContain('No any types');                 
+      134 +    expect(md).toContain('acme/repo Conventions');            
+      135 +  });                                                         
+      136 +                                                              
+      137 +  it('groups by category', () => {                            
+      138 +    const candidates = [                                      
+      139 +      makeRow({ category: 'naming', rule: 'camelCase vars' }),
+      140 +      makeRow({ id: '2', category: 'formatting', rule: 'traili
+          +ng commas' }),                                                
+      141 +    ];                                                        
+      142 +    const md = buildConventionMarkdown('org/repo', candidates)
+          +;                                                             
+      143 +    const namingIdx = md.indexOf('## naming');                
+      144 +    const formattingIdx = md.indexOf('## formatting');        
+      145 +    expect(namingIdx).toBeGreaterThan(-1);                    
+      146 +    expect(formattingIdx).toBeGreaterThan(-1);                
+      147 +    expect(md).toContain('camelCase vars');                   
+      148 +    expect(md).toContain('trailing commas');                  
+      149 +  });                                                         
+      150 +                                                              
+      151 +  it('null category falls back to General', () => {           
+      152 +    const candidates = [makeRow({ category: null, rule: 'Some 
+          +rule' })];                                                    
+      153 +    const md = buildConventionMarkdown('org/repo', candidates)
+          +;                                                             
+      154 +    expect(md).toContain('## General');                       
+      155 +  });                                                         
+      156 +                                                              
+      157 +  it('includes evidence file:line and snippet', () => {       
+      158 +    const candidates = [                                      
+      159 +      makeRow({ evidencePath: 'src/utils.ts', evidenceLine: 42
+          +, evidenceSnippet: 'const helper = ...' }),                   
+      160 +    ];                                                        
+      161 +    const md = buildConventionMarkdown('org/repo', candidates)
+          +;                                                             
+      162 +    expect(md).toContain('`src/utils.ts:42`');                
+      163 +    expect(md).toContain('const helper = ...');               
+      164 +  });                                                         
+      165 +                                                              
+      166 +  it('omits evidence block when evidencePath is null', () => {
+      167 +    const candidates = [makeRow({ evidencePath: null, evidence
+          +Line: null, evidenceSnippet: null })];                        
+      168 +    const md = buildConventionMarkdown('org/repo', candidates)
+          +;                                                             
+      169 +    expect(md).toContain('Use camelCase');                    
+      170 +    expect(md).not.toContain('Evidence:');                    
+      171 +  });                                                         
+      172 +                                                              
+      173 +  it('repo fullName appears in heading', () => {              
+      174 +    const md = buildConventionMarkdown('myorg/myrepo', [makeRo
+          +w({})]);                                                      
+      175 +    expect(md).toContain('# myorg/myrepo Conventions');       
+      176 +    expect(md).toContain('Flag changes that violate these rule
+          +s');                                                          
+      177 +  });                                                         
+      178 +});                                                           
+
+⏺ Step 5: Add integration tests to conventions.it.test.ts
+
+⏺ Update(test/conventions.it.test.ts)
+  ⎿  Added 1 line
+      1  import { describe, it, expect, beforeAll, afterAll } from 'vites
+         t';
+      2 +import { eq } from 'drizzle-orm';                               
+      3  import { startPg, dockerAvailable, type PgFixture } from './help
+         ers/pg.js';
+      4  import { buildApp } from '../src/app.js';
+      5  import { loadConfig } from '../src/platform/config.js';
+
+⏺ Now add the new integration test block at the end of the file:
+
+⏺ Update(test/conventions.it.test.ts)
+  ⎿  Added 234 lines
+      167      await app.close();
+      168    });
+      169  });
+      170 +                                                              
+      171 +d('Testcontainers: conventions skill endpoints', () => {      
+      172 +  let pg: PgFixture;                                          
+      173 +  let workspaceId: string;                                    
+      174 +  let repoId: string;                                         
+      175 +                                                              
+      176 +  beforeAll(async () => {                                     
+      177 +    pg = await startPg();                                     
+      178 +    const { workspaceId: wsId } = await seed(pg.handle.db);   
+      179 +    workspaceId = wsId;                                       
+      180 +    const [repo] = await pg.handle.db                         
+      181 +      .insert(t.repos)                                        
+      182 +      .values({ workspaceId, owner: 'acme', name: 'skill-test'
+          +, fullName: 'acme/skill-test' })                              
+      183 +      .returning();                                           
+      184 +    repoId = repo!.id;                                        
+      185 +  });                                                         
+      186 +                                                              
+      187 +  afterAll(async () => {                                      
+      188 +    await pg?.stop();                                         
+      189 +  });                                                         
+      190 +                                                              
+      191 +  it('skill-preview returns 404 when repo does not exist', asy
+          +nc () => {                                                    
+      192 +    const config = loadConfig({ ...process.env, NODE_ENV: 'tes
+          +t' } as NodeJS.ProcessEnv);                                   
+      193 +    const app = await buildApp({                              
+      194 +      config,                                                 
+      195 +      db: pg.handle.db,                                       
+      196 +      overrides: { git: new MockGitClient(), github: new MockG
+          +itHubClient() },                                              
+      197 +    });                                                       
+      198 +    const res = await app.inject({                            
+      199 +      method: 'POST',                                         
+      200 +      url: '/repos/00000000-0000-0000-0000-000000000099/conven
+          +tions/skill-preview',                                         
+      201 +      payload: {},                                            
+      202 +    });                                                       
+      203 +    expect(res.statusCode).toBe(404);                         
+      204 +    await app.close();                                        
+      205 +  });                                                         
+      206 +                                                              
+      207 +  it('skill-preview returns 422 when no accepted candidates', 
+          +async () => {                                                 
+      208 +    await pg.handle.db                                        
+      209 +      .insert(t.conventions)                                  
+      210 +      .values({ workspaceId, repoId, rule: 'Rejected rule', ac
+          +cepted: false });                                             
+      211 +                                                              
+      212 +    const config = loadConfig({ ...process.env, NODE_ENV: 'tes
+          +t' } as NodeJS.ProcessEnv);                                   
+      213 +    const app = await buildApp({                              
+      214 +      config,                                                 
+      215 +      db: pg.handle.db,                                       
+      216 +      overrides: { git: new MockGitClient(), github: new MockG
+          +itHubClient() },                                              
+      217 +    });                                                       
+      218 +    const res = await app.inject({                            
+      219 +      method: 'POST',                                         
+      220 +      url: `/repos/${repoId}/conventions/skill-preview`,      
+      221 +      payload: {},                                            
+      222 +    });                                                       
+      223 +    expect(res.statusCode).toBe(422);                         
+      224 +    await app.close();                                        
+      225 +  });                                                         
+      226 +                                                              
+      227 +  it('skill-preview includes only accepted candidates', async 
+          +() => {                                                       
+      228 +    await pg.handle.db.insert(t.conventions).values([         
+      229 +      {                                                       
+      230 +        workspaceId,                                          
+      231 +        repoId,                                               
+      232 +        category: 'naming',                                   
+      233 +        rule: 'Use camelCase',                                
+      234 +        evidencePath: 'src/index.ts',                         
+      235 +        evidenceLine: 1,                                      
+      236 +        evidenceSnippet: 'const myVar = 1;',                  
+      237 +        accepted: true,                                       
+      238 +      },                                                      
+      239 +      {                                                       
+      240 +        workspaceId,                                          
+      241 +        repoId,                                               
+      242 +        category: 'formatting',                               
+      243 +        rule: 'Rejected formatting rule',                     
+      244 +        evidencePath: 'src/other.ts',                         
+      245 +        evidenceLine: 5,                                      
+      246 +        accepted: false,                                      
+      247 +      },                                                      
+      248 +    ]);                                                       
+      249 +                                                              
+      250 +    const config = loadConfig({ ...process.env, NODE_ENV: 'tes
+          +t' } as NodeJS.ProcessEnv);                                   
+      251 +    const app = await buildApp({                              
+      252 +      config,                                                 
+      253 +      db: pg.handle.db,                                       
+      254 +      overrides: { git: new MockGitClient(), github: new MockG
+          +itHubClient() },                                              
+      255 +    });                                                       
+      256 +    const res = await app.inject({                            
+      257 +      method: 'POST',                                         
+      258 +      url: `/repos/${repoId}/conventions/skill-preview`,      
+      259 +      payload: {},                                            
+      260 +    });                                                       
+      261 +    expect(res.statusCode).toBe(200);                         
+      262 +    const body = res.json() as Record<string, unknown>;       
+      263 +    expect(body['type']).toBe('convention');                  
+      264 +    expect(body['enabled']).toBe(true);                       
+      265 +    expect(typeof body['token_count']).toBe('number');        
+      266 +    expect(body['body'] as string).toContain('Use camelCase');
+      267 +    expect(body['body'] as string).not.toContain('Rejected for
+          +matting rule');                                               
+      268 +    await app.close();                                        
+      269 +  });                                                         
+      270 +                                                              
+      271 +  it('create skill saves with source=extracted', async () => {
+      272 +    await pg.handle.db.insert(t.conventions).values({         
+      273 +      workspaceId,                                            
+      274 +      repoId,                                                 
+      275 +      category: 'naming',                                     
+      276 +      rule: 'No default exports',                             
+      277 +      evidencePath: 'src/utils.ts',                           
+      278 +      evidenceLine: 3,                                        
+      279 +      evidenceSnippet: 'export function helper() {}',         
+      280 +      accepted: true,                                         
+      281 +    });                                                       
+      282 +                                                              
+      283 +    const config = loadConfig({ ...process.env, NODE_ENV: 'tes
+          +t' } as NodeJS.ProcessEnv);                                   
+      284 +    const app = await buildApp({                              
+      285 +      config,                                                 
+      286 +      db: pg.handle.db,                                       
+      287 +      overrides: { git: new MockGitClient(), github: new MockG
+          +itHubClient() },                                              
+      288 +    });                                                       
+      289 +    const res = await app.inject({                            
+      290 +      method: 'POST',                                         
+      291 +      url: `/repos/${repoId}/conventions/skill`,              
+      292 +      payload: {                                              
+      293 +        name: 'acme/skill-test Conventions',                  
+      294 +        description: 'Convention rules extracted from acme/ski
+          +ll-test',                                                     
+      295 +        type: 'convention',                                   
+      296 +        enabled: true,                                        
+      297 +        body: '# acme/skill-test Conventions\n\n- No default e
+          +xports',                                                      
+      298 +      },                                                      
+      299 +    });                                                       
+      300 +    expect(res.statusCode).toBe(200);                         
+      301 +    const skill = res.json() as Record<string, unknown>;      
+      302 +    expect(skill['source']).toBe('extracted');                
+      303 +    expect(skill['type']).toBe('convention');                 
+      304 +    expect(skill['enabled']).toBe(true);                      
+      305 +    expect(typeof skill['id']).toBe('string');                
+      306 +                                                              
+      307 +    // Verify persisted row                                   
+      308 +    const [row] = await pg.handle.db                          
+      309 +      .select()                                               
+      310 +      .from(t.skills)                                         
+      311 +      .where(eq(t.skills.id, skill['id'] as string));         
+      312 +    expect(row!.source).toBe('extracted');                    
+      313 +    expect(row!.evidenceFiles).toContain('src/utils.ts');     
+      314 +    await app.close();                                        
+      315 +  });                                                         
+      316 +                                                              
+      317 +  it('create skill with agent_id creates agent_skill link', as
+          +ync () => {                                                   
+      318 +    await pg.handle.db.insert(t.conventions).values({         
+      319 +      workspaceId,                                            
+      320 +      repoId,                                                 
+      321 +      rule: 'Always use strict equality',                     
+      322 +      evidencePath: 'src/check.ts',                           
+      323 +      evidenceLine: 10,                                       
+      324 +      evidenceSnippet: 'if (a === b) {',                      
+      325 +      accepted: true,                                         
+      326 +    });                                                       
+      327 +                                                              
+      328 +    // Insert a minimal agent to link against                 
+      329 +    const [agent] = await pg.handle.db                        
+      330 +      .insert(t.agents)                                       
+      331 +      .values({                                               
+      332 +        workspaceId,                                          
+      333 +        name: 'test-agent',                                   
+      334 +        description: '',                                      
+      335 +        provider: 'openrouter',                               
+      336 +        model: 'gpt-4',                                       
+      337 +        systemPrompt: 'You are a reviewer.',                  
+      338 +      })                                                      
+      339 +      .returning();                                           
+      340 +                                                              
+      341 +    const config = loadConfig({ ...process.env, NODE_ENV: 'tes
+          +t' } as NodeJS.ProcessEnv);                                   
+      342 +    const app = await buildApp({                              
+      343 +      config,                                                 
+      344 +      db: pg.handle.db,                                       
+      345 +      overrides: { git: new MockGitClient(), github: new MockG
+          +itHubClient() },                                              
+      346 +    });                                                       
+      347 +    const res = await app.inject({                            
+      348 +      method: 'POST',                                         
+      349 +      url: `/repos/${repoId}/conventions/skill`,              
+      350 +      payload: {                                              
+      351 +        name: 'Linked Conventions',                           
+      352 +        description: 'desc',                                  
+      353 +        type: 'convention',                                   
+      354 +        enabled: true,                                        
+      355 +        body: '# Conventions\n\n- Always use strict equality',
+      356 +        agent_id: agent!.id,                                  
+      357 +      },                                                      
+      358 +    });                                                       
+      359 +    expect(res.statusCode).toBe(200);                         
+      360 +    const skill = res.json() as Record<string, unknown>;      
+      361 +                                                              
+      362 +    const links = await pg.handle.db                          
+      363 +      .select()                                               
+      364 +      .from(t.agentSkills)                                    
+      365 +      .where(eq(t.agentSkills.agentId, agent!.id));           
+      366 +    expect(links.length).toBeGreaterThan(0);                  
+      367 +    expect(links.some((l) => l.skillId === skill['id'])).toBe(
+          +true);                                                        
+      368 +    await app.close();                                        
+      369 +  });                                                         
+      370 +                                                              
+      371 +  it('create skill with unknown agent_id returns 404', async (
+          +) => {                                                        
+      372 +    await pg.handle.db.insert(t.conventions).values({         
+      373 +      workspaceId,                                            
+      374 +      repoId,                                                 
+      375 +      rule: 'Use const over let',                             
+      376 +      evidencePath: 'src/x.ts',                               
+      377 +      evidenceLine: 1,                                        
+      378 +      evidenceSnippet: 'const x = 1;',                        
+      379 +      accepted: true,                                         
+      380 +    });                                                       
+      381 +                                                              
+      382 +    const config = loadConfig({ ...process.env, NODE_ENV: 'tes
+          +t' } as NodeJS.ProcessEnv);                                   
+      383 +    const app = await buildApp({                              
+      384 +      config,                                                 
+      385 +      db: pg.handle.db,                                       
+      386 +      overrides: { git: new MockGitClient(), github: new MockG
+          +itHubClient() },                                              
+      387 +    });                                                       
+      388 +    const res = await app.inject({                            
+      389 +      method: 'POST',                                         
+      390 +      url: `/repos/${repoId}/conventions/skill`,              
+      391 +      payload: {                                              
+      392 +        name: 'test',                                         
+      393 +        description: 'desc',                                  
+      394 +        type: 'convention',                                   
+      395 +        enabled: true,                                        
+      396 +        body: '# test',                                       
+      397 +        agent_id: '00000000-0000-0000-0000-000000000099',     
+      398 +      },                                                      
+      399 +    });                                                       
+      400 +    expect(res.statusCode).toBe(404);                         
+      401 +    await app.close();                                        
+      402 +  });                                                         
+      403 +});                                                           
+
+⏺ Now let me run typecheck first to catch any issues:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Typecheck passes. Now run the tests:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ All 169 tests pass. Let me also run the skills regression check:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ 169/169 pass. Everything is green.
+
+  ---
+  Summary of what was built:
+
+  Preview response shape (POST /repos/:id/conventions/skill-preview):
+  { "name": "owner/repo Conventions", "description": "Convention rules extracted
+  from owner/repo", "type": "convention", "enabled": true, "body": "# 
+  owner/repo Conventions\n...", "token_count": 142 }
+
+  Create request body (POST /repos/:id/conventions/skill):
+  { "name": "...", "description": "...", "type": "convention", "enabled": true,
+  "body": "# ...", "agent_id": "<uuid, optional>" }
+  Returns the full Skill DTO with source: "extracted" and evidence_files
+  populated from the accepted candidates' paths.
+
+  How agent_id links the skill: After the skill is created, the route handler
+  calls AgentsService.linkSkill(workspaceId, agentId, skill.id). This upserts a
+  row in agent_skills(agent_id, skill_id, order) — order defaults to the current
+  count of the agent's existing links. Returns 404 if the agent doesn't exist
+  in the workspace.
+  ⎿  Stop says: [INSIGHTS] Running engineering-insights check...
+
+⏺ Ran 1 stop hook (ctrl+o to expand)
+  ⎿  Stop hook feedback: Use the engineering-insights skill now to
+  decide whether this session produced any non-obvious engineering
+  insight worth appending to INSIGHTS.md.
+
+⏺ Skill(engineering-insights)
+  ⎿  Successfully loaded skill · 3 tools allowed
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+⏺ Candidate insights from this session:
+
+  1. SkillsService.create() hardcodes source='manual'; importSkill() overrides
+  enabled to false for extracted sources → must call SkillsRepository.insert()
+  directly. Non-obvious — keep.
+  2. Cross-module import pattern: when you need a foreign module's full
+  repository behavior (e.g. version snapshots), import its Repository class; for
+  single-column foreign lookups, query the table directly (cf.
+  getRepoClonable). Non-obvious distinction — keep.
+  3. Static sub-path registration order (/skill-preview, /skill before
+  :conventionId) — already documented in existing "What Doesn't Work" entry.
+  Discard.
+  4. Exporting buildConventionMarkdown for unit testing — obvious pattern.
+  Discard.
+
+⏺ Update(INSIGHTS.md)
+  ⎿  Added 1 line
+      18  <!-- Приклад: [2026-06-19] Не викликай adapter напряму в servic
+          e — ламає mock у тестах; завжди через container.ts -->
+      19  [2026-06-23] Fastify: реєстрація `/:id` перед статичними маршру
+          тами (`/community`, `/parse-import`, `/import-url`) — статичні 
+          маршрути ніколи не спрацьовують (тихо відповідає `:id` handler 
+          з невалідним UUID); завжди реєструй static routes ПЕРШИМИ — src
+          /modules/skills/routes.ts:1
+      20  [2026-06-24] `ContainerOverrides.llm` mock silently misses if i
+          ts key doesn't match what the service passes to `container.llm(
+          id)` — container does `this.overrides.llm?.[id]`, so injecting 
+          `{ openai: mock }` when the service calls `llm('openrouter')` s
+          kips the mock and hits the real network with no error — src/pla
+          tform/container.ts:llm
+      21 +[2026-06-24] `SkillsService.create()` hardcodes `source: 'manua
+         +l'`; `importSkill()` overrides `enabled` to `false` for all non
+         +-manual sources — to persist a skill with `source='extracted'` 
+         +and a caller-controlled `enabled`, bypass both and call `Skills
+         +Repository.insert()` directly — src/modules/skills/service.ts  
+      22  [2026-06-24] `STRUCTURAL_ONLY_RE \}[;,)]*` matches only bare `}
+          `, `};`, `})` etc. — `];` (array closer) and `} catch (e) {` (b
+          lock closer followed by word) both slip through; added `\][;,]*
+          ` for array closers, but do NOT add `} catch` universally — it 
+          is valid evidence for error-handling rules about catch blocks —
+           src/modules/conventions/service.ts:STRUCTURAL_ONLY_RE
+      23  [2026-06-24] Even with explicit prompt guidance, GPT-4.1 cites 
+          `import type { Line } from "./helpers"` as evidence for a namin
+          g rule ("Interfaces are named in PascalCase") because the inter
+          face name appears in the import line — deterministic fix: rejec
+          t lines starting with `import`/`export` for naming and typing c
+          ategories in `isWeakEvidence` — src/modules/conventions/service
+          .ts:isWeakEvidence
+      24  [2026-06-24] LLM extraction prompts without an explicit confide
+          nce scale produce `confidence: 1` for every candidate — GPT-4.1
+           via OpenRouter returned 1.0 on all 17/17 candidates until a fo
+          ur-tier scale with anchor descriptions was added to the system 
+          prompt; without anchors the model treats 1.0 as the default num
+          eric value — src/modules/conventions/service.ts:EXTRACTION_SYST
+          EM_PROMPT
+
+⏺ Update(INSIGHTS.md)  ⎿  Added 1 line
+      31  [2026-06-24] Nested routes with two UUID params (e.g. `/repos/:
+          id/conventions/:conventionId`) cannot reuse the shared `IdParam
+          s = z.object({ id: z.string().uuid() })`; define a separate par
+          ams schema with both UUIDs — src/modules/conventions/routes.ts
+      32  [2026-06-24] Zod all-optional object (PATCH body) silently acce
+          pts `{}` as valid; use `.refine((b) => b.field1 !== undefined |
+          | b.field2 !== undefined)` to reject empty patches at the edge 
+          — src/modules/conventions/routes.ts
+      33  [2026-06-24] When a module's extraction pipeline needs one colu
+          mn from another module's table (e.g. conventions needing `repos
+          .clone_path`), query `t.repos` directly inside the local reposi
+          tory instead of importing or injecting the foreign module's Rep
+          ository class — keeps the service layer clean without adding a 
+          cross-module service dependency — src/modules/conventions/repos
+          itory.ts:getRepoClonable
+      34 +[2026-06-24] Counterpart to the above: when a module needs the 
+         +*full behavior* of another module's repository including side e
+         +ffects (e.g. `SkillsRepository.insert()` which also snapshots a
+         + version row), import that Repository class directly into the l
+         +ocal service rather than duplicating the logic — the threshold 
+         +is whether you need one column (→ raw query) or the full mutati
+         +on path (→ import the Repository) — src/modules/conventions/ser
+         +vice.ts:createSkill                                            
+      35  
+      36  ## Tool & Library Notes
+      37  
+
+⏺ server/INSIGHTS.md updated. Two entries appended:
+
+  What Doesn't Work:
+
+  ▎ [2026-06-24] SkillsService.create() hardcodes source: 'manual'; 
+  ▎ importSkill() overrides enabled to false for all non-manual sources — to 
+  ▎ persist a skill with source='extracted' and a caller-controlled enabled, 
+  ▎ bypass both and call SkillsRepository.insert() directly — 
+  ▎ src/modules/skills/service.ts
+
+  Codebase Patterns:
+
+  ▎ [2026-06-24] Counterpart to the above: when a module needs the full behavior
+  ▎ of another module's repository including side effects (e.g. 
+  ▎ SkillsRepository.insert() which also snapshots a version row), import that 
+  ▎ Repository class directly into the local service rather than duplicating the
+  ▎ logic — the threshold is whether you need one column (→ raw query) or the 
+  ▎ full mutation path (→ import the Repository) — 
+  ▎ src/modules/conventions/service.ts:createSkill
+
+  Discarded:
+  - Static route ordering — already documented
+  - Exporting buildConventionMarkdown for unit tests — too obvious
+
+✻ Cooked for 10m 8s
+
+※ recap: Added two endpoints to the conventions module: POST /repos/:id/conventions/skill-preview and POST /repos/:id/conventions/skill. All 169 tests pass. No next action pending.
+
+❯ /context 
+  ⎿  Context Usage
+     ⛁ ⛁ ⛁ ⛀ ⛁ ⛁ ⛁ ⛁ ⛀ ⛁   Sonnet 4.6
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   claude-sonnet-4-6
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   82.5k/200k tokens (41%)
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ 
+     ⛁ ⛁ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   Estimated usage by category
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System prompt: 7k tokens (3.5%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System tools: 8.8k tokens (4.4%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Memory files: 732 tokens (0.4%)
+     ⛶ ⛶ ⛶ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛁ Skills: 1.7k tokens (0.8%)
+     ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛁ Messages: 64.2k tokens (32.1%)
+                           ⛶ Free space: 84.5k (42.3%)
+                           ⛝ Autocompact buffer: 33k tokens (16.5%)
+
+     Auto-compact window: 200k tokens
+
+     Memory files · /memory
+     └ 3 files · 732 tokens
+
+     Skills · /skills
+     └ 19 skills · 1.7k tokens
+
+     /context all to expand
+
+      Suggestions
+      ℹ File reads using 12.1k tokens (6%) → save ~3.6k
+        If you are re-reading files, consider referencing earlier reads. Use offset/limit for large files.
