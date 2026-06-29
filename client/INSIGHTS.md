@@ -31,6 +31,8 @@ Prune quarterly.
 [2026-06-22] RunTraceDrawer — канонічний прецедент вкладених _components/ (TraceBody, FindingsSection, PromptBlock тощо); орієнтуватись на нього при розбитті великих компонентів — src/app/repos/[repoId]/pulls/[number]/_components/RunTraceDrawer/
 [2026-06-24] `useConventionSkillPreview` is a `useMutation` (not `useQuery`) even though it reads data — the endpoint is POST and the call must be imperative; trigger with `preview.mutate(undefined, { onSuccess })` inside `useEffect` on modal mount — src/lib/hooks/conventions.ts:53
 [2026-06-24] Hook input types are often typed ahead of the UI that uses them — before adding a new field to a hook, check whether the contract type already includes it; `CreateConventionSkillInput.agent_id?: string` was pre-typed in hooks/conventions.ts before the modal exposed the select — src/lib/hooks/conventions.ts:17
+[2026-06-29] `usePrIntent` types the GET as `api.get<PrIntentRecord | null>` — assumes the server returns HTTP 200 + null body when no intent exists; a 404 would throw ApiError instead; the null-vs-404 contract must be honored by the backend or the empty state will never render — src/lib/hooks/reviews.ts
+[2026-06-29] `useRecalcIntent(prId)` closes over `prId` in `mutationFn: () => api.post(...)` — the mutation variable is `void`, not `prId`; calling `recalc.mutate()` with no args is intentional; do NOT refactor to pass prId as the mutation variable without updating all callers — src/lib/hooks/reviews.ts
 
 ## Tool & Library Notes
 

@@ -8,6 +8,7 @@ import { api, API_BASE } from "../api";
 import { notify } from "../toast";
 import type {
   FindingActionKind,
+  PrIntentRecord,
   PrReviewComment,
   ReviewRecord,
   ReviewRunResponse,
@@ -156,6 +157,28 @@ export function useFindingAction() {
       ),
     onSuccess: (_d, { prId }) => {
       if (prId) qc.invalidateQueries({ queryKey: ["reviews", prId] });
+    },
+  });
+}
+
+// ---- PR Intent (GET/POST /pulls/:id/intent) ----
+/** Fetch the stored intent analysis for a PR. Returns null when no intent has been
+    analyzed yet (server returns 200 with null body). Only enabled when prId is truthy. */
+export function usePrIntent(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["pr-intent", prId],
+    queryFn: () => api.get<PrIntentRecord | null>(`/pulls/${prId}/intent`),
+    enabled: !!prId,
+  });
+}
+
+/** Trigger an intent (re-)analysis for a PR. On success, refreshes the cached intent. */
+export function useRecalcIntent(prId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<PrIntentRecord>(`/pulls/${prId}/intent`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pr-intent", prId] });
     },
   });
 }

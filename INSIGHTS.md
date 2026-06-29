@@ -17,6 +17,7 @@ Prune quarterly (stale entries are noise, not signal).
 [2026-06-24] Skills are injected BEFORE the diff in the review prompt (## Skills / rules → ## Diff to review order in assemblePrompt) — model reads explicit rules before it reads the code, which is why a linked skill makes findings consistent and specific rather than probabilistic — reviewer-core/src/prompt.ts:109
 
 ## What Doesn't Work
+[2026-06-29] Implementer агент невиправданий для малих адитивних змін (≤5 файлів, ≤10 нових рядків) — Wave 1 contract edits коштував 72k токенів; orchestrator робить те саме через Edit-виклики за ~500 токенів; Implementer виправданий тільки для складної логіки з тестами або коли треба паралельний disjoint scope
 
 <!-- Глухі кути й антипатерни — найцінніша секція, заповнюй першою -->
 [2026-06-22] Renaming CLAUDE.md → AGENTS.md silently breaks Claude Code — it reads only CLAUDE.md, not AGENTS.md; no warning is given
@@ -27,11 +28,18 @@ Prune quarterly (stale entries are noise, not signal).
 
 <!-- Non-default конвенції та архітектурні рішення цього проекту -->
 [2026-06-29] plan-verifier agent needs explicit "do NOT comment on quality/style" prohibition in its system prompt — without it, the agent naturally drifts into code review mode and never produces the traceability matrix; this is the #1 failure mode for requirement-tracing agents per 2024-2025 LLM research — .claude/agents/plan-verifier.md
+[2026-06-29] `server/src/vendor/shared/` і `client/src/vendor/shared/` НЕ linked через npm/pnpm — будь-яка зміна Zod-контракту (Intent, PromptAssembly тощо) мусить бути вручну продубльована в обидва шляхи; client компілюється проти власної копії і не дає помилки при розсинхроні — server/src/vendor/shared/contracts/ + client/src/vendor/shared/contracts/
+[2026-06-29] Уточнення: reviewer-core читає @devdigest/shared безпосередньо з server/src/vendor/shared/ через tsconfig path alias (не має власної копії) — при змінах контрактів є рівно ДВА targets для sync (server = source, client = mirror), не три — reviewer-core/tsconfig.json
 
 ## Tool & Library Notes
 
 <!-- Квірки залежностей, версійні сюрпризи, нестандартна поведінка -->
 [2026-06-22] Отримати один піддиректорій з GitHub без клонування всього репо: `git clone --depth=1 --filter=blob:none --sparse <url> /tmp/dir && cd /tmp/dir && git sparse-checkout set <subpath>`
+[2026-06-29] Implementer worktree завжди базується на main, а не на поточній feature branch — при роботі на feature branch (напр. lab-3) НЕ мерджи worktree branch; натомість: `git diff` у worktree → зберегти patch → `git apply` у робочому дереві — .claude/worktrees/
+[2026-06-29] Implementer що повертає BLOCKED через відсутній upstream-контракт (напр. Wave 1 не в worktree) може мати повністю коректну логіку — тести часто проходять, а typecheck падає лише через відсутній тип; застосуй diff на feature branch разом з Wave 1 змінами і typecheck відновиться без повторного запуску агента
+[2026-06-29] `git apply` патч з worktree для INSIGHTS.md падає з "patch does not apply" коли INSIGHTS.md вже модифіковано на feature branch під час планування — виключай INSIGHTS.md з `git diff` і переноси записи вручну через Edit
+[2026-06-29] Для фінальної integration wave (яка залежить від усіх попередніх хвиль) запускай Implementer БЕЗ worktree isolation щоб агент бачив вже змерджені зміни; у промпті явно вказати "work directly in the project files on <branch>"
+[2026-06-29] Якщо Implementer backportує попередні хвилі у власний worktree (щоб пройти typecheck), `git diff` покаже ці backport-файли разом з реальними змінами — застосовуй `git apply` вибірково тільки для файлів цієї хвилі; backport-копії вже є на feature branch і будуть перезаписані якщо застосувати весь diff
 [2026-06-22] skill-creator workspace (`<skill>-workspace/`) є sibling до skill dir і не згадується в SKILL.md — це development artifact eval-циклу, безпечно видаляти після завершення; Claude Code завантажує лише вміст самої skill dir
 
 ## Recurring Errors & Fixes

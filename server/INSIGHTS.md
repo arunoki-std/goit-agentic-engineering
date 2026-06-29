@@ -36,6 +36,7 @@ Prune quarterly.
 [2026-06-24] Zod all-optional object (PATCH body) silently accepts `{}` as valid; use `.refine((b) => b.field1 !== undefined || b.field2 !== undefined)` to reject empty patches at the edge — src/modules/conventions/routes.ts
 [2026-06-24] When a module's extraction pipeline needs one column from another module's table (e.g. conventions needing `repos.clone_path`), query `t.repos` directly inside the local repository instead of importing or injecting the foreign module's Repository class — keeps the service layer clean without adding a cross-module service dependency — src/modules/conventions/repository.ts:getRepoClonable
 [2026-06-24] Counterpart to the above: when a module needs the *full behavior* of another module's repository including side effects (e.g. `SkillsRepository.insert()` which also snapshots a version row), import that Repository class directly into the local service rather than duplicating the logic — the threshold is whether you need one column (→ raw query) or the full mutation path (→ import the Repository) — src/modules/conventions/service.ts:createSkill
+[2026-06-29] `PrDetail.linked_issue` резолвиться з GitHub on-demand і НЕ зберігається в окремій таблиці DB — intent-класифікатор або мусить робити live GitHub-запит при classify-time, або парсити `closes #N`/`fixes #N` з `pull_requests.body` — src/modules/pulls/
 
 ## Tool & Library Notes
 
@@ -48,7 +49,11 @@ Prune quarterly.
 <!-- Повторювані помилки + фікс -->
 <!-- Приклад: [2026-06-19] "relation does not exist" → міграції не були застосовані; cd server && pnpm db:migrate -->
 [2026-06-23] `app.httpErrors.badRequest()` — `@fastify/sensible` не зареєстровано в цьому додатку; виклик падає зі "Property 'httpErrors' does not exist"; завжди кидай `new AppError(code, msg, statusCode)` з `platform/errors.ts` — src/modules/skills/routes.ts
+[2026-06-29] `FEATURE_MODELS.review_intent` defaultModel = `gpt-4.1` — але spec Intent Layer вимагає flash-class cheap model; не виправивши default перед реалізацією, класифікатор тихо білить дорогу модель без compile-помилки — src/vendor/shared/contracts/platform.ts:56
+[2026-06-29] Intent schema field naming trap: поле текстового summary в Zod-схемі `Intent` зветься `intent` (НЕ `summary`) — `Intent = {intent: string, in_scope[], out_of_scope[]}`; реалізація classifier або IntentCard з полем `summary` дасть TypeScript-помилки, але тільки якщо знаєш схему — src/vendor/shared/contracts/brief.ts:9
+[2026-06-29] `pr_files.patch` містить повний diff; передавати його в intent-класифікатор збільшує токени в ~10–50×; spec вимагає лише `@@`-рядки (hunk headers) — треба стрипати все, крім рядків, що починаються з `@@`, до виклику LLM — src/db/schema/reviews.ts (pr_files.patch)
 [2026-06-24] `container.llm('openai')` → "OPENAI_API_KEY is not configured" at runtime in this deployment — only OPENROUTER_API_KEY is provisioned; use `container.llm('openrouter')` with model `openai/gpt-4.1` to reach OpenAI models via proxy — src/modules/conventions/service.ts
+[2026-06-29] Git worktree `pnpm typecheck` fails with "Cannot find module 'openai'" навіть коли server має всі deps — server tsconfig path-aliases посилаються на `../../reviewer-core/src/`, а reviewer-core/node_modules НЕ заповнюються автоматично у worktree; фікс: `cd reviewer-core && npm install` (reviewer-core використовує package-lock.json, не pnpm) — server/tsconfig.json:paths
 
 ## Session Notes
 

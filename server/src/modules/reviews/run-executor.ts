@@ -1,5 +1,5 @@
 import type { Container } from '../../platform/container.js';
-import type { Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
+import type { Intent, Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
 import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
 import * as schema from '../../db/schema.js';
@@ -8,6 +8,7 @@ import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './reposit
 import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
+import { classifyIntent } from './intent-classifier.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -104,6 +105,31 @@ export class ReviewRunExecutor {
     }
     runLog.info(`Diff ready — ${diff.files.length} changed file(s); starting ${jobs.length} agent run(s)`);
 
+    // Best-effort: load stored intent (or classify once if missing).
+    // Any error → intentText stays undefined and the review proceeds identically
+    // to the pre-intent behaviour (never let intent failure break a review run).
+    let intentText: string | undefined;
+    try {
+      const stored = await this.repo.getIntent(pull.id);
+      if (stored) {
+        intentText = this.buildIntentBlock(stored);
+        runLog.info('Intent: loaded from store');
+      } else {
+        // First review — classify and persist so the intent card is populated too.
+        const prFiles = await this.repo.getPrFiles(pull.id);
+        const intent = await runLog.step(
+          'Classifying PR intent',
+          () => classifyIntent(this.container, workspaceId, pull, repo, prFiles, logger),
+          { kind: 'tool' },
+        );
+        await this.repo.upsertIntent(pull.id, intent);
+        intentText = this.buildIntentBlock(intent);
+      }
+    } catch (err) {
+      logger?.info({ err, prId: pull.id }, 'intent: classification skipped');
+      // intentText stays undefined — review proceeds without intent (identical to pre-feature behaviour)
+    }
+
     for (const { agent, runId } of jobs) {
       const agentStart = Date.now();
       logger?.info(
@@ -111,7 +137,7 @@ export class ReviewRunExecutor {
         `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
       );
       try {
-        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog);
+        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog, intentText);
         logger?.info(
           {
             runId,
@@ -143,6 +169,7 @@ export class ReviewRunExecutor {
     agent: AgentRow,
     runId: string,
     parentLog: RunLogger,
+    intentText?: string,
   ): Promise<RunOutcome> {
     const start = Date.now();
     // Narrow the fanned-out pre-work logger to THIS run; the shared diff/intent
@@ -210,6 +237,10 @@ export class ReviewRunExecutor {
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
+        // Classified PR intent / scope (loaded or first-time classified above).
+        // undefined when not available — reviewer-core handles this gracefully
+        // (section omitted, identical to pre-feature behaviour).
+        ...(intentText ? { intent: intentText } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),
@@ -319,6 +350,22 @@ export class ReviewRunExecutor {
       this.container.runBus.complete(runId);
       throw err;
     }
+  }
+
+  /**
+   * Format a classified Intent into the plain-text block passed to
+   * `reviewPullRequest` as the `intent` prompt slot. The model receives a
+   * summary sentence plus optional in-scope / out-of-scope bullet lists.
+   */
+  private buildIntentBlock(intent: Intent): string {
+    const lines: string[] = [intent.intent];
+    if (intent.in_scope.length > 0) {
+      lines.push('In scope:\n' + intent.in_scope.map((s) => `- ${s}`).join('\n'));
+    }
+    if (intent.out_of_scope.length > 0) {
+      lines.push('Out of scope:\n' + intent.out_of_scope.map((s) => `- ${s}`).join('\n'));
+    }
+    return lines.join('\n\n');
   }
 
   /**
