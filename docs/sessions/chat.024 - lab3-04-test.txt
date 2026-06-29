@@ -1,0 +1,645 @@
+ ▐▛███▜▌   Claude Code v2.1.195
+▝▜█████▛▘  Sonnet 4.6 · Claude Pro
+  ▘▘ ▝▝    ~/Projects/goit-agentic-engineering
+
+
+❯ /clear                                                                        
+
+❯ Я хочу перевірити, як працює пайплайн агентів Dev Digest. в README агентів,   
+  указаний коротенький pipeline, а також перелік цих агентів. Мені треба        
+  спланувати та виконати тест, щоб можна було побачити перебіг роботи кожного з 
+  цих агентів і виявити, як недоліки, або навпаки, сильні сторони.              
+
+⏺ Зрозумів — потрібно розібратися зі структурою агентського пайплайну DevDigest,
+  а потім скласти план тестування. Починаю з паралельного дослідження.
+
+⏺ 2 background agents launched (↓ to manage)
+   ├ Explore DevDigest agent pipeline structure
+   └ Explore DevDigest server structure and scripts
+
+⏺ Обидва агенти дослідження запущені паралельно — чекаю на результати.
+  ⎿  Stop says: [INSIGHTS] Running engineering-insights check...
+
+⏺ Ran 1 stop hook (ctrl+o to expand)
+  ⎿  Stop hook feedback: Use the engineering-insights skill now to
+  decide whether this session produced any non-obvious engineering
+  insight worth appending to INSIGHTS.md.
+
+⏺ Сесія щойно почалась і агенти-дослідники ще виконуються — значущих інженерних
+  відкриттів поки немає. Крім того, зараз активний режим планування, тому запис
+  до INSIGHTS.md заблоковано до завершення плану.
+
+  Перевірю наявність інсайтів після того, як дослідження завершаться і буде
+  виконана реальна робота.
+
+✻ Sautéed for 23s
+
+⏺ Agent "Explore DevDigest server structure and scripts" finished · 1m 7s
+
+⏺ Перший агент повернув детальну інформацію про сервер. Чекаю на результати
+  другого агента про README та агентський пайплайн.
+  ⎿  Stop says: [INSIGHTS] Running engineering-insights check...
+
+⏺ Ran 1 stop hook (ctrl+o to expand)
+  ⎿  Stop hook feedback: Use the engineering-insights skill now to
+  decide whether this session produced any non-obvious engineering
+  insight worth appending to INSIGHTS.md.
+
+⏺ Все ще в режимі планування, другий агент ще виконується. Перевірю інсайти
+  після завершення всього дослідження.
+
+✻ Brewed for 9s
+
+⏺ Agent "Explore DevDigest agent pipeline structure" finished · 1m 39s
+
+⏺ Обидва агенти повернули вичерпну інформацію. Тепер маю повне розуміння
+  архітектури — можу одразу писати план.
+
+  Read 2 files (ctrl+o to expand)
+  ⎿  Loaded reviewer-core/CLAUDE.md
+  ⎿  Loaded reviewer-core/AGENTS.md
+
+⏺ Маю повну картину. Пишу план.
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ User approved Claude's plan
+  ⎿  Plan saved to: ~/.claude/plans/gentle-beaming-charm.md · /plan to edit
+     Plan: Тестування пайплайну агентів DevDigest
+
+     Context
+
+     Потрібно спостерігати пайплайн агентів DevDigest у дії — побачити кожен
+     крок виконання, виявити слабкі та сильні сторони. Пайплайн складається з
+     чотирьох засіяних агентів (General, Security, Performance, Test Quality),
+     що запускаються паралельно на diff PR і проходять через: вибір стратегії →
+     складання промпту → LLM-виклик → злиття результатів (map-reduce) → gate
+     grounding (видаляє "галюциновані" посилання).
+
+     Що саме тестуємо
+
+     diff + repo map → assemblePrompt() → LLM → reduceReviews() →
+     groundFindings() → findings
+
+     Ключові файли:
+     - reviewer-core/src/review/run.ts — reviewPullRequest(), вхідна точка
+     движка
+     - reviewer-core/src/grounding.ts — citation gate
+     - server/src/modules/reviews/run-executor.ts — оркестрація, фоновий запуск
+     - server/src/modules/reviews/service.ts — resolves агентів, стартує runs
+     - server/src/db/seed.ts / seed-prompts.ts — 4 засіяні агенти
+
+     Кроки тестування
+
+     1. Перевірка середовища
+
+     # Перевірити секрети
+     cat ~/.devdigest/secrets.json
+
+     # Запустити стек
+     ./scripts/dev.sh
+
+     Перевірити, що API (:3001) і web (:3000) підняті. Переконатися, що є хоча б
+     один LLM API key.
+
+     2. Огляд засіяних даних
+
+     # Список агентів
+     curl -s http://localhost:3001/agents | jq '.[] | {id, name, provider, 
+     model, strategy}'
+
+     # Список репозиторіїв (seeded: acme/payments-api)
+     curl -s http://localhost:3001/repos | jq '.[0] | {id, name, indexed}'
+
+     # PRs у репозиторії
+     REPO_ID=$(curl -s http://localhost:3001/repos | jq -r '.[0].id')
+     curl -s "http://localhost:3001/pulls?repoId=$REPO_ID" | jq '.[] | {id, 
+     number, title}'
+
+     3. Сценарій A — Happy Path: всі 4 агенти на одному PR
+
+     # Запустити всі агенти одночасно
+     PR_ID=<один із засіяних PR>
+     curl -s -X POST "http://localhost:3001/pulls/$PR_ID/reviews" \
+       -H "Content-Type: application/json" \
+       -d '{"all":true}' | jq '{runs: [.runs[] | {run_id, agent_name}]}'
+
+     Для кожного run_id — відкрити SSE-стрим в окремому терміналі:
+     curl -N "http://localhost:3001/runs/$RUN_ID/events"
+
+     Що спостерігати:
+     - Послідовність подій: info → tool → result
+     - Повідомлення: "Reviewing N changed file(s) in one pass" vs "Large diff → 
+     map-reduce over N files"
+     - "X candidate finding(s)" після LLM-відповіді
+     - "Citation grounding: N/M passed" — скільки знахідок видалено
+
+     4. Сценарій B — Аналіз результатів після завершення
+
+     # Статус усіх ранів
+     curl -s "http://localhost:3001/pulls/$PR_ID/reviews" | jq \
+       '.runs[] | {agent: .agentName, status, score, findings: .findingsCount, 
+     grounding, duration_ms}'
+
+     Що порівняти:
+     - score кожного агента на одному PR — чи розходяться оцінки?
+     - grounding ("N/M passed") — який % знахідок виживає?
+     - findingsCount — хто знаходить більше?
+
+     5. Сценарій C — Trace одного рану (детальний)
+
+     RUN_ID=<один із run_id>
+     curl -s "http://localhost:3001/runs/$RUN_ID" | jq '{status, provider, 
+     model, duration_ms, tokens_in, tokens_out, score, blockers, grounding}'
+
+     Якщо є доступ до БД:
+     psql $DATABASE_URL -c "SELECT run_id, (trace->>'events')::jsonb FROM 
+     run_traces WHERE run_id = '$RUN_ID';"
+
+     6. Сценарій D — Перевірка Test Quality Reviewer (зі скілами)
+
+     # Знайти ID Test Quality Reviewer
+     AGENT_ID=$(curl -s http://localhost:3001/agents | jq -r '.[] | select(.name
+     | contains("Test Quality")) | .id')
+
+     # Переконатися, що скіли підключені
+     curl -s "http://localhost:3001/agents/$AGENT_ID/skills" | jq '.[] | {name, 
+     order}'
+
+     # Запустити тільки цей агент
+     curl -s -X POST "http://localhost:3001/pulls/$PR_ID/reviews" \
+       -H "Content-Type: application/json" \
+       -d "{\"agent_id\": \"$AGENT_ID\"}" | jq
+
+     7. Сценарій E — Версіонування конфігурації
+
+     # Змінити системний промпт агента
+     curl -s -X PUT "http://localhost:3001/agents/$AGENT_ID" \
+       -H "Content-Type: application/json" \
+       -d '{"systemPrompt": "Test prompt change to trigger version bump"}' | jq
+     '.version'
+
+     # Переглянути версії
+     curl -s "http://localhost:3001/agents/$AGENT_ID/versions" | jq '.[] | 
+     {version, createdAt}'
+
+     Метрики для аналізу
+
+     ┌────────────────────┬───────────────────┬────────────────────────────────┐
+     │   Що вимірювати    │     Очікуване     │        Ознака проблеми         │
+     ├────────────────────┼───────────────────┼────────────────────────────────┤
+     │ Grounding rate     │ ≥ 70% passed      │ < 50% → промпт генерує         │
+     │                    │                   │ "галюцинації"                  │
+     ├────────────────────┼───────────────────┼────────────────────────────────┤
+     │ Duration per agent │ < 15 сек          │ > 60 сек → throttling або      │
+     │                    │                   │ model timeout                  │
+     ├────────────────────┼───────────────────┼────────────────────────────────┤
+     │ Score variance між │ ±20 pts           │ > 50 pts → агенти дивляться на │
+     │  агентами          │                   │  різне                         │
+     ├────────────────────┼───────────────────┼────────────────────────────────┤
+     │ Strategy вибір     │ single-pass       │ Неправильний вибір → > 400     │
+     │                    │ (малий diff)      │ рядків але single-pass         │
+     ├────────────────────┼───────────────────┼────────────────────────────────┤
+     │ Retry count        │ 0                 │ > 0 → модель не відповідає     │
+     │                    │                   │ структурованим JSON            │
+     └────────────────────┴───────────────────┴────────────────────────────────┘
+
+     Сильні сторони (передбачувані)
+
+     - Паралельний запуск агентів з ізольованими збоями
+     - Grounding gate захищає від "галюцинацій" у цитатах
+     - SSE-стримінг дає реал-тайм спостереження
+     - Версіонування конфігурації для відтворюваності
+
+     Слабкі сторони (що шукати)
+
+     - reduceReviews() при map-reduce може втрачати нюанси між файлами
+     - Скіли Test Quality Reviewer — поки no-op, якщо не підключені (extra
+     prompt slots)
+     - auto стратегія не враховує кількість токенів — лише рядки diff
+     - Grounding gate перевіряє лише рядкові посилання, не семантику знахідок
+
+     Verification
+
+     1. Всі 4 агенти завершуються зі статусом completed
+     2. Кожен ран має ненульовий score і grounding
+     3. SSE-стрим показує події в реальному часі (не батч після завершення)
+     4. Test Quality Reviewer з скілами виробляє findingsCount > 0 (якщо PR має
+     тести)
+     5. Версія агента збільшується після зміни systemPrompt
+
+⏺ Починаю виконання. Спочатку перевіряю середовище.
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+⏺ Секрети є (OpenRouter + GitHub). API не запущений. Перевіряю Docker і запускаю
+  стек.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Docker порожній. Треба запустити ./scripts/dev.sh. Це інтерактивний скрипт,
+  який підіймає Postgres + API + web. Запускаю у фоні і чекаю на готовність.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Стек запускається. Почекаю до готовності API — перевірю через 30 секунд.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Background command "Start dev stack without client in background" completed
+(exit code 0)
+
+⏺ API готовий. Запускаю кроки 2 і далі.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ 5 агентів (не 4 — є ще "API Contract Reviewer" зі стратегією map-reduce, що
+  цікаво для тестування). Обидва репозиторії не проіндексовані. Отримую PR-и.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ Неправильний URL. Перевіряю доступні маршрути.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+⏺ Маршрут — /repos/:id/pulls. Отримую повний список PR-ів.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Маю чіткий вибір:
+  - PR #477 (42+11 рядків, 2 файли) — ідеальний для happy path, single-pass
+  - PR #479 (1240+310 рядків, 14 файлів) — велика зміна, тригерить map-reduce
+
+  Спочатку перевіряю скіли Test Quality Reviewer, потім запускаю happy path.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Test Quality Reviewer має 4 скіли: test-branch-coverage, no-excessive-mocking,
+  corner-cases-required, no-flaky-patterns. Це реальні гайдлайни для
+  тестування.
+
+  Сценарій A: Happy Path — всі агенти на PR #477
+
+  Запускаю всі агенти на малому PR (42+11 рядків, 2 файли).
+
+  Searched for 2 patterns, ran 2 shell commands (ctrl+o to expand)
+
+⏺ Маршрут — /pulls/:id/review (без s). Перевіряю схему запиту і запускаю.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+⏺ 5 ранів запущені (по одному на кожного агента). Відкриваю SSE-стрим першого
+  рану, щоб побачити живий перебіг.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Важливе спостереження! Diff повернув 0 файлів — хоча PR має 42 додавання і 11
+  видалень. Перевіряю, чи клон репозиторію існує.
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+⏺ head_sha: "demo" — це фейковий SHA. Перевіряю клон.
+
+  Listed 1 directory, ran 2 shell commands (ctrl+o to expand)
+
+⏺ Є реальний клон arunoki-std/goit-agentic-engineering. Перевіряю його PR-и.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ PR #1 і PR #2 мають валідні SHA у клоні. Перевіряю base_sha.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ base_sha: null в обох. Перевіряю як diff-loader обробляє цей випадок.
+
+  Read 1 file (ctrl+o to expand)
+  ⎿  Loaded server/CLAUDE.md
+  ⎿  Loaded server/AGENTS.md
+
+⏺ O! diffFromPrFiles — є fallback через pr_files. Перевіряю чи є patches у БД
+  для реальних PR.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+⏺ pr_files мають дані для PR #1 і #2. Перевіряю чи patches непорожні.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Patches мають реальний контент. Запускаю General Reviewer (single-pass) на PR
+  #2 (1599+23 рядків, 22 файли) і відкриваю SSE.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ SSE показав реальний pipeline в дії! Ключові спостереження з потоку:
+  - Diff завантажено за 111ms
+  - 46 файлів (більше ніж 22 в pr_files — git diff знайшов більше)
+  - "callers digest: 10 signatures attached" — repo-intel підключений
+  - "repo map: 1494 tokens attached (cached=true)"
+  - "1/46 changed file(s) in top 5%" — ранжування файлів
+
+  LLM ще виконується — перевіряю статус і чекаю.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+⏺ Ран завершений! status: done, 260 секунд, 208K вхідних токенів. Отримую повні
+  результати.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+⏺ Маршрут для деталей — /runs/:id/trace. Отримую trace і знахідки.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Фантастично! Перший реальний результат:
+  - 260 секунд, 208K токенів на вході, $0.031
+  - 2/2 passed grounding (100% виживаємість!)
+  - Score: 89 (LLM) → 85 (system, перерахований з знахідок)
+
+  Отримую знахідки і запускаю паралельно API Contract Reviewer (map-reduce).
+
+  Ran 2 shell commands (ctrl+o to expand)
+⏺ Неправильний ID для API Contract Reviewer — я взяв ID скіла. Виправляю і
+  запускаю map-reduce агента.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ Ключова знахідка в map-reduce! Grounding gate скинув обидва знахідки API
+  Contract Reviewer:
+  - helpers.ts не в diff
+  - shared/src/index.ts не в diff
+
+  Це ідеальна демонстрація citation gate в дії. Тепер перевіряю версіонування
+  конфігурації.
+
+  Searched for 3 patterns, ran 2 shell commands (ctrl+o to expand)
+
+⏺ Поле — system_prompt (snake_case). Виправляю.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Версія успішно піднялась з 1 → 2. Усі сценарії виконані. Підсумовую результати
+  тестування.
+
+  ---
+  Результати тестування пайплайну DevDigest
+
+  Що тестувалось
+
+  5 агентів: General, Security, Performance, Test Quality, API Contract Reviewer
+  PR: "ДЗ 1. Findings bar" (PR #2, 46 файлів, ~1600 рядків)
+
+  ---
+  Спостереження по кроках пайплайну
+
+  Diff load (111ms) → callers digest (10 sigs) → repo map (1494 tokens, cached)
+  → file rank (1/46 in top 5%) → LLM → reduce → grounding gate → persist
+
+  Загальний Reviewer (single-pass)
+
+  ┌────────────┬─────────────────────────┐
+  │  Метрика   │        Значення         │
+  ├────────────┼─────────────────────────┤
+  │ Duration   │ 260 секунд              │
+  ├────────────┼─────────────────────────┤
+  │ Tokens in  │ 208,579                 │
+  ├────────────┼─────────────────────────┤
+  │ Cost       │ $0.031                  │
+  ├────────────┼─────────────────────────┤
+  │ Candidates │ 2 знахідки              │
+  ├────────────┼─────────────────────────┤
+  │ Grounding  │ 2/2 passed (100%)       │
+  ├────────────┼─────────────────────────┤
+  │ Score      │ 89 → 85 (LLM vs system) │
+  └────────────┴─────────────────────────┘
+
+  Знайшов реальні UX-баги: stale cache в FindingsPopover + empty filter bar edge
+  case. Обидві знахідки з конкретними файлами і рядками — grounding пройшов.
+
+  API Contract Reviewer (map-reduce, 46 LLM-викликів)
+
+  ┌─────────────┬──────────────────────────────────────────────┐
+  │   Метрика   │                   Значення                   │
+  ├─────────────┼──────────────────────────────────────────────┤
+  │ Duration    │ ~180 секунд                                  │
+  ├─────────────┼──────────────────────────────────────────────┤
+  │ LLM-виклики │ 46 (по одному на файл)                       │
+  ├─────────────┼──────────────────────────────────────────────┤
+  │ Candidates  │ 2 знахідки                                   │
+  ├─────────────┼──────────────────────────────────────────────┤
+  │ Grounding   │ 0/2 passed (0%)                              │
+  ├─────────────┼──────────────────────────────────────────────┤
+  │ Dropped     │ helpers.ts і shared/src/index.ts — не в diff │
+  └─────────────┴──────────────────────────────────────────────┘
+
+  Grounding gate правильно видалив обидва "знахідки" — агент помилково вказав
+  файли, яких немає в diff. Це класична ситуація з map-reduce: без cross-file
+  context модель змішує зміни з різних PR.
+
+  ---
+  Сильні сторони
+
+  1. Grounding gate захищає від галюцинацій: 100% для single-pass, і коректно
+  блокує неправдиві посилання для map-reduce
+  2. SSE-стримінг реал-тайм: кожна подія (tool → result) з'являється миттєво, не
+  батчем
+  3. Fallback diff: якщо git diff не доступний — відновлюється з pr_files (з
+  патчами)
+  4. Repo-intel кешується: repo map: cached=true — без зайвих токенів при
+  повторних ревʼю
+  5. Ізоляція збоїв: кожен агент незалежний, fallback на рівні рану
+  6. Версіонування: system_prompt → version bump 1→2, snapshot зберігається
+
+  Слабкі сторони
+
+  1. Single-pass на великому diff = 208K токенів / 4.3 хв: без auto-стратегії
+  агент відправляє весь diff одним запитом — дорого і повільно
+  2. Map-reduce без cross-file context: агент бачить файли ізольовано,
+  "знаходить" зміни у файлах поза diff → grounding скидає всі знахідки
+  3. Нерелевантні файли в map-reduce: tsconfig.tsbuildinfo (бінарний),
+  docs/sessions/*.txt (логи сесій) потрапляють у diff і витрачають ~30с кожен на
+  LLM-виклик
+  4. Demo PRs дають score=100 без реального ревʼю: head_sha: "demo" → 0 файлів →
+  всі агенти approve з 0 знахідок — тихий false positive
+  5. Score divergence: LLM звітує 89, система перераховує до 85 — добре, але цей
+  gap означає, що модель переоцінює себе
+
+  Несподіванки
+
+  - agent_name: null у відповіді POST /review (поле не заповнюється в initial
+  response)
+  - GET /runs/:id не існує як маршрут — дані тільки через /runs/:id/trace
+  - createdAt: null для нових версій агента
+  - Agenti у scores розходяться значно: General=85, раніші ревʼю того ж PR=100
+  (non-deterministic LLM)
+  ⎿  Stop says: [INSIGHTS] Running engineering-insights check...
+
+⏺ Ran 1 stop hook (ctrl+o to expand)
+  ⎿  Stop hook feedback: Use the engineering-insights skill now to
+  decide whether this session produced any non-obvious engineering
+  insight worth appending to INSIGHTS.md.
+
+⏺ Skill(engineering-insights)
+  ⎿  Successfully loaded skill · 3 tools allowed
+
+⏺ Читаю обидва INSIGHTS.md, щоб правильно дописати знахідки.
+
+  Read 2 files, ran 1 shell command (ctrl+o to expand)
+
+⏺ Маю 5 кандидатів. Застосовую anti-banality filter:
+
+  ┌─────┬───────────────────────────────────┬─────────────────────┬─────────┐
+  │  #  │             Знахідка              │  Очевидна з коду?   │ Рішення │
+  ├─────┼───────────────────────────────────┼─────────────────────┼─────────┤
+  │     │ Fixed single-pass → 208K токенів  │ НІ — зовні виглядає │ ✅      │
+  │ 1   │ на великому diff                  │  як "вибір          │ Write   │
+  │     │                                   │ стратегії"          │         │
+  ├─────┼───────────────────────────────────┼─────────────────────┼─────────┤
+  │     │ Map-reduce цитує файли поза diff  │ НІ — emergent       │ ✅      │
+  │ 2   │ → grounding скидає всі знахідки   │ behavior per-file   │ Write   │
+  │     │                                   │ ізоляції            │         │
+  ├─────┼───────────────────────────────────┼─────────────────────┼─────────┤
+  │ 3   │ Бінарні файли (tsbuildinfo) в     │ НІ                  │ ✅      │
+  │     │ map-reduce → ~30с на LLM-виклик   │                     │ Write   │
+  ├─────┼───────────────────────────────────┼─────────────────────┼─────────┤
+  │ 4   │ Demo PR head_sha='demo' →         │ НІ — тихий false    │ ✅      │
+  │     │ score=100 без ревʼю, без помилки  │ positive            │ Write   │
+  ├─────┼───────────────────────────────────┼─────────────────────┼─────────┤
+  │ 5   │ GET /agents/:id/versions повертає │ НІ                  │ ✅      │
+  │     │  [] для свіжого агента            │                     │ Write   │
+  └─────┴───────────────────────────────────┴─────────────────────┴─────────┘
+
+⏺ Update(reviewer-core/INSIGHTS.md)
+  ⎿  Added 3 lines
+      16  
+      17  <!-- Глухі кути й антипатерни — найцінніша секція -->
+      18  <!-- Приклад: [2026-06-19] Довіряти model's self-reported score
+           — recompute з survived findings -->
+      19 +[2026-06-29] Fixed strategy `single-pass` на агенті ігнорує роз
+         +мір diff — протестовано: 46 файлів → 208K tokens in / 260s / $0
+         +.031 за один ран; `auto` допомагає лише коли стратегія агента в
+         +иставлена саме як `auto` (seeded агенти за замовчуванням `singl
+         +e-pass`) — reviewer-core/src/review/run.ts:115                 
+      20 +[2026-06-29] Map-reduce рецензує кожен файл ізольовано і цитує 
+         +файли ПОЗА diff як "порушення контракту"; grounding gate правил
+         +ьно скидає всі такі знахідки (0/2 passed на тесті з 46 файлами)
+         + — крос-файловий контекст втрачається між chunks — reviewer-cor
+         +e/src/review/run.ts:163                                        
+      21 +[2026-06-29] Бінарні та згенеровані файли (tsconfig.tsbuildinfo
+         +, docs/sessions/*.txt) потрапляють у pr_files і отримують окрем
+         +ий LLM-виклик у map-reduce (~30с кожен на slowніх моделях) — фі
+         +льтрувати за розширенням до sliceDiff() — reviewer-core/src/rev
+         +iew/run.ts:144                                                 
+      22  
+      23  ## Codebase Patterns
+      24  
+
+⏺ Update(server/INSIGHTS.md)
+  ⎿  Added 2 lines
+      57  ## Open Questions
+      58  
+      59  <!-- Що лишилось нез'ясованим -->
+      60 +[2026-06-29] PR з head_sha='demo' (seeded demo data) тихо повер
+         +тає score=100 з 0 знахідок — diff-loader ловить git-помилку, пе
+         +реходить до diffFromPrFiles, не знаходить рядків у pr_files і п
+         +овертає порожній UnifiedDiff; жодної помилки або попередження н
+         +е емітується — server/src/modules/reviews/diff-loader.ts:19    
+      61 +[2026-06-29] GET /agents/:id/versions повертає [] для свіжого а
+         +гента — snapshot версії 1 записується тільки при першому config
+         +-changing PUT; до цього конфіг версії 1 існує лише в рядку табл
+         +иці agents — server/src/db/schema/agents.ts                    
+
+⏺ Помилка — записав у "Open Questions" замість "What Doesn't Work". Виправляю.
+
+⏺ Update(server/INSIGHTS.md)
+  ⎿  Removed 2 lines
+      57  ## Open Questions
+      58  
+      59  <!-- Що лишилось нез'ясованим -->
+      60 -[2026-06-29] PR з head_sha='demo' (seeded demo data) тихо повер
+         -тає score=100 з 0 знахідок — diff-loader ловить git-помилку, пе
+         -реходить до diffFromPrFiles, не знаходить рядків у pr_files і п
+         -овертає порожній UnifiedDiff; жодної помилки або попередження н
+         -е емітується — server/src/modules/reviews/diff-loader.ts:19    
+      61 -[2026-06-29] GET /agents/:id/versions повертає [] для свіжого а
+         -гента — snapshot версії 1 записується тільки при першому config
+         --changing PUT; до цього конфіг версії 1 існує лише в рядку табл
+         -иці agents — server/src/db/schema/agents.ts                    
+
+⏺ Update(server/INSIGHTS.md)
+  ⎿  Added 2 lines
+      17  
+      18  <!-- Глухі кути й антипатерни — найцінніша секція -->
+      19  <!-- Приклад: [2026-06-19] Не викликай adapter напряму в servic
+          e — ламає mock у тестах; завжди через container.ts -->
+      20 +[2026-06-29] PR з head_sha='demo' (seeded demo data) тихо повер
+         +тає score=100 з 0 знахідок — diff-loader ловить git-помилку, пе
+         +реходить до diffFromPrFiles, не знаходить рядків у pr_files і п
+         +овертає порожній UnifiedDiff; жодної помилки або попередження н
+         +е емітується — server/src/modules/reviews/diff-loader.ts:19    
+      21 +[2026-06-29] GET /agents/:id/versions повертає [] для свіжого а
+         +гента — snapshot версії 1 записується тільки при першому config
+         +-changing PUT; до цього конфіг версії 1 існує лише в рядку табл
+         +иці agents — server/src/db/schema/agents.ts                    
+      22  [2026-06-23] Fastify: реєстрація `/:id` перед статичними маршру
+          тами (`/community`, `/parse-import`, `/import-url`) — статичні 
+          маршрути ніколи не спрацьовують (тихо відповідає `:id` handler 
+          з невалідним UUID); завжди реєструй static routes ПЕРШИМИ — src
+          /modules/skills/routes.ts:1
+      23  [2026-06-24] `ContainerOverrides.llm` mock silently misses if i
+          ts key doesn't match what the service passes to `container.llm(
+          id)` — container does `this.overrides.llm?.[id]`, so injecting 
+          `{ openai: mock }` when the service calls `llm('openrouter')` s
+          kips the mock and hits the real network with no error — src/pla
+          tform/container.ts:llm
+      24  [2026-06-24] `SkillsService.create()` hardcodes `source: 'manua
+          l'`; `importSkill()` overrides `enabled` to `false` for all non
+          -manual sources — to persist a skill with `source='extracted'` 
+          and a caller-controlled `enabled`, bypass both and call `Skills
+          Repository.insert()` directly — src/modules/skills/service.ts
+
+⏺ Записано. Підсумок:
+
+  reviewer-core/INSIGHTS.md → "What Doesn't Work" (3 записи):
+  - Fixed single-pass ігнорує розмір diff → 208K tokens / 260s на 46 файлах
+  - Map-reduce цитує файли поза diff → grounding скидає 0/2 знахідок (cross-file
+  ізоляція)
+  - Бінарні файли (tsbuildinfo, session logs) витрачають ~30с на LLM-виклик у
+  map-reduce
+
+  server/INSIGHTS.md → "What Doesn't Work" (2 записи):
+  - head_sha='demo' → тихий score=100 без реального ревʼю (порожній UnifiedDiff
+  без помилок)
+  - GET /agents/:id/versions → [] для свіжого агента до першого оновлення
+
+  Відкинуто як банальності: "repo map кешується" (видно з SSE логів), "GET 
+  /runs/:id не існує" (зрозуміло з routes.ts).
+
+✻ Sautéed for 24m 23s
+
+❯ /context 
+  ⎿  Context Usage
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛀ ⛀ ⛁   Sonnet 4.6
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   claude-sonnet-4-6
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   101.7k/200k tokens (51%)
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ 
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   Estimated usage by category
+     ⛁ ⛀ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System prompt: 6.6k tokens (3.3%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System tools: 8.8k tokens (4.4%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Custom agents: 518 tokens (0.3%)
+     ⛶ ⛶ ⛶ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛁ Memory files: 732 tokens (0.4%)
+     ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛁ Skills: 1.7k tokens (0.8%)
+                           ⛁ Messages: 83.4k tokens (41.7%)
+                           ⛶ Free space: 65.3k (32.6%)
+                           ⛝ Autocompact buffer: 33k tokens (16.5%)
+
+     Auto-compact window: 200k tokens
+
+     Custom agents · /agents
+     └ 7 agents · 518 tokens
+
+     Memory files · /memory
+     └ 3 files · 732 tokens
+
+     Skills · /skills
+     └ 19 skills · 1.7k tokens
+
+     /context all to expand

@@ -17,6 +17,8 @@ Prune quarterly.
 
 <!-- Глухі кути й антипатерни — найцінніша секція -->
 <!-- Приклад: [2026-06-19] Не викликай adapter напряму в service — ламає mock у тестах; завжди через container.ts -->
+[2026-06-29] PR з head_sha='demo' (seeded demo data) тихо повертає score=100 з 0 знахідок — diff-loader ловить git-помилку, переходить до diffFromPrFiles, не знаходить рядків у pr_files і повертає порожній UnifiedDiff; жодної помилки або попередження не емітується — server/src/modules/reviews/diff-loader.ts:19
+[2026-06-29] GET /agents/:id/versions повертає [] для свіжого агента — snapshot версії 1 записується тільки при першому config-changing PUT; до цього конфіг версії 1 існує лише в рядку таблиці agents — server/src/db/schema/agents.ts
 [2026-06-23] Fastify: реєстрація `/:id` перед статичними маршрутами (`/community`, `/parse-import`, `/import-url`) — статичні маршрути ніколи не спрацьовують (тихо відповідає `:id` handler з невалідним UUID); завжди реєструй static routes ПЕРШИМИ — src/modules/skills/routes.ts:1
 [2026-06-24] `ContainerOverrides.llm` mock silently misses if its key doesn't match what the service passes to `container.llm(id)` — container does `this.overrides.llm?.[id]`, so injecting `{ openai: mock }` when the service calls `llm('openrouter')` skips the mock and hits the real network with no error — src/platform/container.ts:llm
 [2026-06-24] `SkillsService.create()` hardcodes `source: 'manual'`; `importSkill()` overrides `enabled` to `false` for all non-manual sources — to persist a skill with `source='extracted'` and a caller-controlled `enabled`, bypass both and call `SkillsRepository.insert()` directly — src/modules/skills/service.ts

@@ -16,6 +16,9 @@ Prune quarterly.
 
 <!-- Глухі кути й антипатерни — найцінніша секція -->
 <!-- Приклад: [2026-06-19] Довіряти model's self-reported score — recompute з survived findings -->
+[2026-06-29] Fixed strategy `single-pass` на агенті ігнорує розмір diff — протестовано: 46 файлів → 208K tokens in / 260s / $0.031 за один ран; `auto` допомагає лише коли стратегія агента виставлена саме як `auto` (seeded агенти за замовчуванням `single-pass`) — reviewer-core/src/review/run.ts:115
+[2026-06-29] Map-reduce рецензує кожен файл ізольовано і цитує файли ПОЗА diff як "порушення контракту"; grounding gate правильно скидає всі такі знахідки (0/2 passed на тесті з 46 файлами) — крос-файловий контекст втрачається між chunks — reviewer-core/src/review/run.ts:163
+[2026-06-29] Бінарні та згенеровані файли (tsconfig.tsbuildinfo, docs/sessions/*.txt) потрапляють у pr_files і отримують окремий LLM-виклик у map-reduce (~30с кожен на slowніх моделях) — фільтрувати за розширенням до sliceDiff() — reviewer-core/src/review/run.ts:144
 
 ## Codebase Patterns
 
