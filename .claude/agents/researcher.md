@@ -1,6 +1,6 @@
 ---
 name: researcher
-description:
+description: >
   Research agent — searches for information in the project codebase and on the
   internet. Use when you need to find facts, locate code, look up documentation,
   clarify an ambiguous research task through a short interview, or answer

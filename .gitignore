@@ -18,6 +18,7 @@ coverage/
 # Local runtime data
 server/clones/
 e2e/test-results/
+.claude/worktrees/
 
 # Logs
 *.log
