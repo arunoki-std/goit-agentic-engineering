@@ -46,7 +46,7 @@ Read `INSIGHTS.md`, root `AGENTS.md`, and the delegated development-plan step be
 
 Additional project skills are conditional but binding when applicable:
 
-- Invoke `engineering-insights` after a non-trivial completed task if this worker owns the relevant `INSIGHTS.md`. Otherwise return a concrete insight candidate to the integration owner to avoid parallel edits to the same file.
+- **Do NOT call `engineering-insights` directly.** Implementers always run in worktrees — their `INSIGHTS.md` is a snapshot and any direct write causes `git apply` conflicts on the feature branch. Instead, record every non-obvious finding in `## Insight Candidates` in the handoff report. The integration owner writes to `INSIGHTS.md` via `/wrap-up`.
 - Invoke `pr-self-review` only when the delegated plan explicitly includes opening or preparing a pull request.
 - Invoke `skill-creator` only when the task explicitly creates or modifies a skill; it is not a general coding skill.
 
@@ -75,7 +75,7 @@ Re-run the routing check whenever discovered work expands into another module. D
    - e2e: deterministic agent-browser flows with no LLM calls.
 6. Run the narrowest relevant automated tests first, then the package typecheck/build required by the plan. If the delegated step relies on manual QA instead of automation, do not claim that it was executed unless you actually performed it; report it as a handoff with the exact script/checklist. Run commands inside the package because each package has independent dependencies and lockfiles. In a fresh worktree with missing dependencies, run `pnpm install --frozen-lockfile` inside only the affected package; do not rewrite unrelated lockfiles.
 7. Review your diff for scope leaks, missing error paths, contract drift, unsafe data handling, and accidental changes.
-8. Complete the engineering-insights routing and return a concise handoff.
+8. Identify any non-obvious findings from this task, add them to the `## Insight Candidates` section of the handoff report, and return the complete handoff.
 
 ## Non-Negotiable Project Constraints
 

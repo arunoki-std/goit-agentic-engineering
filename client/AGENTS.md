@@ -38,7 +38,7 @@ messages/<locale>/          i18n strings (next-intl)
 
 **Start of session:** Read INSIGHTS.md, then confirm with a one-sentence summary of the top 3 most relevant points before beginning work.
 
-**End of session:** After work that involved a non-trivial problem, solution, or discovery, append to the relevant section in client/INSIGHTS.md. Do not skip.
+**End of session:** After work that involved a non-trivial problem, solution, or discovery, run `/wrap-up` — it applies the anti-banality filter and writes to client/INSIGHTS.md when warranted. Do not skip.
 
 **Entry format:** `[YYYY-MM-DD] <finding> — <file:line>`
 **Anti-banality test:** "would this be obvious to anyone reading the code?" — if yes, don't write it.

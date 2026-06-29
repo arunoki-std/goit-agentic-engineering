@@ -32,7 +32,7 @@ Cross-package links = tsconfig path aliases, NOT npm/pnpm links. Each package ha
 
 **Start of session:** Read INSIGHTS.md, then confirm with a one-sentence summary of the top 3 most relevant points before beginning work. This forces active processing, not passive load.
 
-**End of session:** After work that involved a non-trivial problem, solution, or discovery (>30 min), append to the relevant section in the module's INSIGHTS.md. Do not skip — if you skip the wrap-up, the system doesn't learn.
+**End of session:** After work that involved a non-trivial problem, solution, or discovery (>30 min), run `/wrap-up`. It collects insight candidates, applies the anti-banality filter, and writes to the correct INSIGHTS.md. Do not skip — if you skip the wrap-up, the system doesn't learn.
 
 **Rules for entries:**
 - Format: `[YYYY-MM-DD] <finding> — <file:line>`

@@ -4,6 +4,11 @@ description: Append non-obvious engineering findings discovered during a work se
 allowed-tools: Read, Edit, Bash(date:*)
 ---
 
+> **Scope:** Call this skill only from the main orchestrator session or via `/wrap-up`.
+> Parallel implementer agents (running in worktrees) must NOT call this skill — they return
+> `## Insight Candidates` in their handoff report instead. The orchestrator is the single
+> writer of INSIGHTS.md to avoid patch conflicts.
+
 # Engineering Insights
 
 Append one or more findings to the correct `INSIGHTS.md` file for the module where the current work happened.
