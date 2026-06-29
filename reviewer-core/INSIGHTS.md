@@ -30,6 +30,7 @@ Prune quarterly.
 
 <!-- Повторювані помилки + фікс -->
 <!-- Приклад: [2026-06-19] `pnpm build` не генерує JS — це typecheck, dist/ не існує -->
+[2026-06-29] `pnpm build` fails with ERR_PNPM_IGNORED_BUILDS (esbuild post-install script blocked) in a fresh environment — run `pnpm approve-builds` once, then retry
 
 ## Session Notes
 
