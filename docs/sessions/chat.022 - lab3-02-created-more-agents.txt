@@ -1,0 +1,690 @@
+ ▐▛███▜▌   Claude Code v2.1.195
+▝▜█████▛▘  Sonnet 4.6 · Claude Pro
+  ▘▘ ▝▝    ~/Projects/goit-agentic-engineering
+
+
+❯ Створюємо агентів:                                                            
+  - Test Writer                                                                 
+  - Architecture Reviewer                                                       
+  - plan varifier                                                               
+  - docs creator                                                                
+                                                                                
+  В кожному агенті має бути зазначена модель. Дозволили або "read", або "read   
+  write".                                                                       
+                                                                                
+  Test Writer: пише тести, для UI, для backend, заснований на тих скілах, що    
+  вже є.                                                                        
+                                                                                
+  Architecture Reviewer : також заснований на наших скілах. Має read "доступ"   
+  до проєкту.                                                                   
+                                                                                
+  plan varifier: йому дається план роботи. Він дивиться на той код, що          
+  зроблений. цей агент має фокусуватися не на гарних практиках, а на тому, що   
+  всі пункти нашого **requirement** мають бути перевірені.                      
+                                                                                
+  docs creator: він має описувати функціонал. І ті шматки інформації, котрі ми  
+  йому дамо, щоб він її перетворював у документацію. Також він має знати, куди  
+  всі ці документи писати.                                                      
+                                                                                
+  Використай Skill Planner для їх написання.                                    
+  Також пошукай практики  за допомогою ресерч-агента для кожного із агентів,    
+  котрих створюємо, і включи в цей план - це можна робити паралельно.           
+
+⏺ Розпочну з паралельного дослідження кодової бази та пошуку кращих практик для
+  кожного агента.
+
+⏺ 3 background agents launched (↓ to manage)
+   ├ Explore (Explore existing agent/skill structure)
+   ├ researcher (Research best practices for Test Writer agent)
+   └ researcher (Research best practices for Architecture Reviewer, Plan Verifier, Docs Creator agents)
+
+⏺ Три агенти запущені паралельно. Чекаю на результати.
+  ⎿  Stop says: [INSIGHTS] Running engineering-insights check...
+
+⏺ Ran 1 stop hook (ctrl+o to expand)
+  ⎿  Stop hook feedback: Use the engineering-insights skill now to
+  decide whether this session produced any non-obvious engineering
+  insight worth appending to INSIGHTS.md.
+
+⏺ Skill(engineering-insights)
+  ⎿  Successfully loaded skill · 3 tools allowed
+
+⏺ Ця сесія ще не завершена — ми в режимі планування, агенти ще не повернули
+  результати, і код не змінювався. Жодних нетривіальних знахідок ще не виникло,
+  що пройшли б фільтр anti-banality.
+
+  INSIGHTS.md не оновлюється — записувати нічого.
+
+✻ Worked for 42s
+
+⏺ Agent "Explore existing agent/skill structure" finished · 1m 34s
+
+⏺ Перший агент завершив роботу — маємо повну картину структури проєкту. Чекаю на
+  результати від двох дослідницьких агентів.
+  ⎿  Stop says: [INSIGHTS] Running engineering-insights check...
+
+⏺ Ran 1 stop hook (ctrl+o to expand)
+  ⎿  Stop hook feedback: Use the engineering-insights skill now to
+  decide whether this session produced any non-obvious engineering
+  insight worth appending to INSIGHTS.md.
+
+⏺ Сесія ще в процесі — чекаємо на дослідницькі агенти, код не змінювався. Нічого
+  для INSIGHTS.md поки що немає.
+
+✻ Worked for 11s
+
+⏺ Agent "Research best practices for Architecture Reviewer, Plan Verifier, Docs
+Creator agents" finished · 1m 29s
+
+⏺ Agent "Research best practices for Test Writer agent" finished · 1m 37s
+
+⏺ Всі три агенти завершили роботу. Маю все необхідне — переходжу одразу до
+  написання плану.
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ User approved Claude's plan
+  ⎿  Plan saved to: ~/.claude/plans/test-wise-bubble.md · /plan to edit
+     Plan: Create 4 New Agents
+
+     Context
+
+     The project already has a 3-agent pipeline (researcher → planner →
+     implementer). The team now needs four specialized agents to fill gaps in
+     the workflow: automated test writing, architectural review, plan-vs-reality
+     verification, and documentation generation. Each agent must declare its
+     model and use either read or read-write permissions.
+
+     ---
+     Conventions (from existing agents)
+
+     Agents live in .claude/agents/<name>.md. Frontmatter fields in use:
+
+     ---
+     name: <string>
+     description: <string>
+     model: sonnet | opus
+     effort: high | medium
+     permissionMode: acceptEdits    # read-write; omit for read-only
+     tools: [Read, Write, Edit, ...]
+     disallowedTools: [Agent, ...]
+     skills: [skill-name, ...]
+     ---
+
+     Skill files: .claude/skills/<name>/SKILL.md (same pattern, allowed-tools
+     instead of tools).
+     After adding agents, update .claude/agents/README.md.
+
+     ---
+     Research-backed design decisions
+
+     Test Writer
+     - One concrete existing test example > three paragraphs of instructions
+     (GitHub study, 2500+ repos)
+     - Separate UI and backend paths explicitly — different frameworks, naming
+     conventions, scope
+     - Write access scoped to test directories only, never src/
+     - Agent runs pnpm test after writing to iterate on failures
+
+     Architecture Reviewer
+     - Read-only by design: architectural advice requires human consensus before
+     any refactor
+     - Scope the prompt narrowly — exclude test coverage, docs, style (mixed
+     scope degrades output)
+     - Needs cross-file context; single-file view misses coupling issues
+     - Output uses severity levels from existing pr-self-review
+     severity-rules.md
+
+     Plan Verifier
+     - Atomize requirements with stable IDs (REQ-01, REQ-02…) before passing
+     them in
+     - Output = traceability matrix only (REQ-ID → file:function or NOT FOUND)
+     - Multi-step reasoning: parse → scan each requirement independently →
+     summarize gaps
+     - Prompt must explicitly prohibit quality/style comments — scope creep is
+     the #1 failure mode
+
+     Docs Creator
+     - Process code in dependency order (reduces hallucinations — DocAgent
+     paper, arXiv 2504.08725)
+     - Define persona, intent, delivery format, and target directory in the
+     prompt
+     - Never infer where to write docs — receive explicit location rules
+     - Evaluate output on: completeness, helpfulness, truthfulness
+
+     ---
+     Agent 1: Test Writer
+
+     File: .claude/agents/test-writer.md
+     Model: sonnet | Permissions: read-write (acceptEdits)
+     Skills preloaded: onion-architecture, react-best-practices
+     Tools: Read, Write, Edit, Glob, Grep, Bash(pnpm test, grep:*, find:*)
+     DisallowedTools: Agent
+
+     Key instructions to include:
+
+     1. Before writing — read one existing test in the same module as pattern
+     reference.
+     2. Server tests (server/test/):
+       - Hermetic (no DB): <name>.test.ts, uses vitest + app.inject()
+       - DB-backed: <name>.it.test.ts, uses testcontainers
+       - Mock adapters live in src/adapters/mocks.ts — use them, never invent
+     new stubs
+     3. Client tests (client/src/**/*.test.tsx):
+       - jsdom + vitest; colocated next to the component
+       - Cover: rendering with required props, user interactions, error/empty
+     states
+       - No visual pixel matching
+     4. E2E tests (e2e/specs/):
+       - Output is JSON flow files, NOT TypeScript/Playwright
+       - Use e2e/specs/01-app-boot.flow.json as schema reference
+       - Scope to critical user journeys only
+     5. Constraints: Never modify src/. Never disable an existing test. Never
+     write a test that only asserts toBeDefined().
+     6. After writing — run pnpm test and iterate on failures before reporting
+     done.
+
+     ---
+     Agent 2: Architecture Reviewer
+
+     File: .claude/agents/architecture-reviewer.md
+     Model: opus | Permissions: read-only (no permissionMode)
+     Skills preloaded: onion-architecture, react-best-practices
+     Tools: Read, Glob, Grep, Bash(grep:*, find:*), Skill
+     DisallowedTools: Write, Edit, Agent
+
+     Key instructions to include:
+
+     1. Scope: Flag SOLID violations, tight coupling, onion-layer breaches,
+     scalability risks, and deviations from project idioms.
+     2. Explicitly excluded: test coverage gaps, documentation gaps, code style,
+     naming conventions.
+     3. Context strategy: Always read the whole module (imports, dependents,
+     schema) — not just the changed file.
+     4. Output format: Structured findings list with severity (critical /
+     warning / info) following pr-self-review/references/severity-rules.md.
+     5. Verdict per finding: what breaks at scale, not just "violates principle
+     X".
+     6. Output is advice only — never modify files.
+
+     ---
+     Agent 3: Plan Verifier
+
+     File: .claude/agents/plan-verifier.md
+     Model: sonnet | Permissions: read-only (no permissionMode)
+     Tools: Read, Glob, Grep, Bash(grep:*, find:*)
+     DisallowedTools: Write, Edit, Agent
+
+     Key instructions to include:
+
+     1. Input contract: The caller must provide a requirements list with stable
+     IDs (REQ-01, REQ-02…). If IDs are missing, assign them before proceeding.
+     2. Three-step reasoning:
+       - Parse the requirements list.
+       - For each REQ-ID, independently search the codebase for its
+     implementation.
+       - Produce a traceability matrix.
+     3. Output format:
+     | REQ-ID | Description | Status | Location |
+     |--------|-------------|--------|----------|
+     | REQ-01 | ...         | ✅ FOUND | server/src/foo/service.ts:42 |
+     | REQ-02 | ...         | ❌ NOT FOUND | — |
+     | REQ-03 | ...         | ⚠️ PARTIAL | server/src/bar/routes.ts:10 |
+     4. Hard constraint: Do NOT comment on code quality, style, patterns, or
+     best practices. Only: is it there or not?
+     5. Summary section: count of FOUND / PARTIAL / NOT FOUND with a one-line
+     assessment.
+
+     ---
+     Agent 4: Docs Creator
+
+     File: .claude/agents/docs-creator.md
+     Model: sonnet | Permissions: read-write (acceptEdits)
+     Tools: Read, Write, Edit, Glob, Grep, Bash(grep:*, find:*)
+     DisallowedTools: Agent
+
+     Key instructions to include:
+
+     1. Persona: Senior technical writer targeting other developers on the team.
+     2. Where to write (never infer — follow this table):
+
+     | Content type                 | Target location               |
+     |------------------------------|-------------------------------|
+     | Feature/module overview      | docs/<feature-name>.md        |
+     | Module conventions & gotchas | module AGENTS.md              |
+     | Public API (TypeScript)      | inline JSDoc above the export |
+     | Lab/session deliverables     | docs/lab-<N>/                 |
+     | Session transcripts          | docs/sessions/                |
+
+     3. Process order: Document leaf modules before modules that depend on them
+     (reduces cross-reference hallucinations).
+     4. Given context: Accept raw notes, code snippets, or descriptions from the
+     caller — transform them into structured documentation, do not invent
+     behavior.
+     5. Quality rubric per doc produced:
+       - Completeness: all public APIs / config options mentioned
+       - Helpfulness: at least one practical usage example
+       - Truthfulness: no behavior described that isn't in the code
+     6. Format: Markdown, GitHub-flavored. No emoji unless the existing file
+     uses them.
+
+     ---
+     Files to create / modify
+
+     ┌────────┬─────────────────────────────────────────────────────────┐
+     │ Action │                          Path                           │
+     ├────────┼─────────────────────────────────────────────────────────┤
+     │ Create │ .claude/agents/test-writer.md                           │
+     ├────────┼─────────────────────────────────────────────────────────┤
+     │ Create │ .claude/agents/architecture-reviewer.md                 │
+     ├────────┼─────────────────────────────────────────────────────────┤
+     │ Create │ .claude/agents/plan-verifier.md                         │
+     ├────────┼─────────────────────────────────────────────────────────┤
+     │ Create │ .claude/agents/docs-creator.md                          │
+     ├────────┼─────────────────────────────────────────────────────────┤
+     │ Update │ .claude/agents/README.md — add entries for all 4 agents │
+     └────────┴─────────────────────────────────────────────────────────┘
+
+     ---
+     Verification
+
+     1. Read each created .md file to confirm frontmatter parses (name, model,
+     permissionMode, tools present).
+     2. Spot-check that tools lists are consistent with declared permissions (no
+     Write/Edit in read-only agents).
+     3. Confirm README.md has an entry for each new agent with a one-line
+     description and trigger condition.
+     4. Run grep -r 
+     "test-writer\|architecture-reviewer\|plan-verifier\|docs-creator" 
+     .claude/agents/ to verify all files exist.
+
+⏺ План затверджений. Читаю існуючі агенти для точного формату, потім створюю всі
+  4 паралельно.
+
+  Read 3 files (ctrl+o to expand)
+
+⏺ Тепер створюю всі 4 агенти паралельно.
+⏺ Write(.claude/agents/test-writer.md)
+  ⎿  Wrote 97 lines to .claude/agents/test-writer.md
+       1 ---
+       3 description: >
+       4   Writes tests for UI components and backend/API code in the Dev
+         Digest project.
+         c module, route,
+       6   component, or service. Supports server hermetic tests, DB-back
+       7   tests, client component tests, and e2e JSON flow specs. Does N
+         OT modify src/
+       8   or any production code.
+      10 effort: high
+     … +114 lines (ctrl+o to expand)
+
+⏺ Write(.claude/agents/architecture-reviewer.md)
+  ⎿  Wrote 90 lines to .claude/agents/architecture-reviewer.md
+       1 ---
+       3 description: >
+       4   Reviews code architecture for layer violations, tight coupling
+         , SOLID issues,
+         ementing a feature
+       6   or before opening a PR when you want an independent structural
+       7   Read-only — produces findings and recommendations, never modif
+         ies files.
+       8 model: opus
+      10 tools: Read, Glob, Grep, Bash, Skill
+     … +104 lines (ctrl+o to expand)
+
+⏺ Write(.claude/agents/plan-verifier.md)
+  ⎿  Wrote 79 lines to .claude/agents/plan-verifier.md
+       1 ---
+       3 description: >
+       4   Verifies that completed code covers every requirement in a giv
+         en plan or spec.
+         ity matrix:
+       6   each requirement mapped to where it is implemented or flagged 
+       7   Read-only — never comments on code quality, style, or best pra
+         ctices.
+       8 model: sonnet
+      10 tools: Read, Glob, Grep, Bash
+     … +95 lines (ctrl+o to expand)
+
+⏺ Write(.claude/agents/docs-creator.md)
+  ⎿  Wrote 91 lines to .claude/agents/docs-creator.md
+       1 ---
+       3 description: >
+       4   Converts code, notes, and context provided by the caller into 
+         structured
+         re, module,
+       6   public API, or lab deliverable. Knows where to write each type
+       7   Never invents behavior — documents only what is in the code or
+          explicitly
+       8   provided by the caller.
+      10 effort: high
+     … +108 lines (ctrl+o to expand)
+
+⏺ Всі 4 агенти створені. Оновлюю README.md.
+
+⏺ Update(.claude/agents/README.md)
+  ⎿  Added 5 lines
+       5  ```
+       6  [researcher] ──→ [planner] ──→ [implementer] (один або декілька
+           паралельно)
+       7     пошук           план             код
+       8 +                                                               
+       9 +[test-writer]          — пише тести після реалізації           
+      10 +[architecture-reviewer]— перевіряє архітектуру перед PR        
+      11 +[plan-verifier]        — звіряє код з вимогами плану           
+      12 +[docs-creator]         — генерує документацію                  
+      13  ```
+      14  
+      15  ---
+
+⏺ Update(.claude/agents/README.md)
+  ⎿  Added 136 lines
+      170  
+      171  ---
+      172  
+      173 +## test-writer                                                
+      174 +                                                              
+      175 +**Файл:** `test-writer.md`                                    
+      176 +**Модель:** claude-sonnet (effort: high)                      
+      177 +**Інструменти:** Read, Write, Edit, Glob, Grep, Bash          
+      178 +**Заборонено:** Agent                                         
+      179 +**Режим:** `acceptEdits` — пише лише тестові файли, ніколи не 
+          +змінює `src/`                                                 
+      180 +**Архітектурні скили:** `onion-architecture`, `react-best-prac
+          +tices`                                                        
+      181 +                                                              
+      182 +### Призначення                                               
+      183 +                                                              
+      184 +Пише тести для UI-компонентів і backend-коду. Підтримує всі чо
+          +тири рівні тестування проекту: hermetic-тести сервера, DB-back
+          +ed інтеграційні тести, jsdom-тести клієнта і JSON-специфікації
+          + e2e. Читає один існуючий тест як зразок перед написанням ново
+          +го.                                                           
+      185 +                                                              
+      186 +### Коли використовувати                                      
+      187 +                                                              
+      188 +- Потрібно додати або розширити покриття тестами для модуля, м
+          +аршруту, компонента або сервісу                               
+      189 +- Після реалізації нової функціональності (`implementer` зроби
+          +в свою роботу)                                                
+      190 +                                                              
+      191 +### Коли НЕ використовувати                                   
+      192 +                                                              
+      193 +- Потрібно змінити виробничий код — для цього є `implementer` 
+      194 +- Тест провалюється через баг у `src/` — поверни проблему у `i
+          +mplementer`                                                   
+      195 +                                                              
+      196 +### Маршрутизація по рівнях тестування                        
+      197 +                                                              
+      198 +| Рівень | Файл | Інструменти |                               
+      199 +|--------|------|-------------|                               
+      200 +| Server hermetic | `server/test/<name>.test.ts` | vitest + `a
+          +pp.inject()` + mocks.ts |                                     
+      201 +| Server DB-backed | `server/test/<name>.it.test.ts` | vitest 
+          ++ testcontainers |                                            
+      202 +| Client component | `client/src/**/*.test.tsx` | vitest + jsd
+          +om (colocated) |                                              
+      203 +| E2E flow | `e2e/specs/NN-<name>.flow.json` | JSON schema (не
+          + Playwright) |                                                
+      204 +                                                              
+      205 +---                                                           
+      206 +                                                              
+      207 +## architecture-reviewer                                      
+      208 +                                                              
+      209 +**Файл:** `architecture-reviewer.md`                          
+      210 +**Модель:** claude-opus (effort: high)                        
+      211 +**Інструменти:** Read, Glob, Grep, Bash, Skill                
+      212 +**Заборонено:** Write, Edit, Agent                            
+      213 +**Режим:** лише читання — ніколи не змінює файли              
+      214 +**Архітектурні скили:** `onion-architecture`, `react-best-prac
+          +tices`                                                        
+      215 +                                                              
+      216 +### Призначення                                               
+      217 +                                                              
+      218 +Перевіряє архітектурну структуру коду: порушення шарів onion-а
+          +рхітектури, тісне зчеплення, SOLID-проблеми, ризики масштабова
+          +ності. Повертає структурований список знахідок із рівнями seve
+          +rity (CRITICAL / WARNING / INFO) і вердиктом BLOCKED / CONCERN
+          +S / PASSED.                                                   
+      219 +                                                              
+      220 +### Коли використовувати                                      
+      221 +                                                              
+      222 +- Після реалізації великої функції, перед відкриттям PR       
+      223 +- Коли треба незалежна думка щодо структури нового модуля     
+      224 +- Якщо є підозра на порушення шарів між `server/src/` і `clien
+          +t/src/`                                                       
+      225 +                                                              
+      226 +### Коли НЕ використовувати                                   
+      227 +                                                              
+      228 +- Потрібна перевірка тестового покриття — для цього є `test-wr
+          +iter`                                                         
+      229 +- Потрібна перевірка виконання вимог плану — для цього є `plan
+          +-verifier`                                                    
+      230 +                                                              
+      231 +### Що НЕ входить у скоуп                                     
+      232 +                                                              
+      233 +Пропуски в тестах, документація, стиль коду, іменування, мікро
+          +-оптимізації.                                                 
+      234 +                                                              
+      235 +---                                                           
+      236 +                                                              
+      237 +## plan-verifier                                              
+      238 +                                                              
+      239 +**Файл:** `plan-verifier.md`                                  
+      240 +**Модель:** claude-sonnet (effort: high)                      
+      241 +**Інструменти:** Read, Glob, Grep, Bash                       
+      242 +**Заборонено:** Write, Edit, Agent                            
+      243 +**Режим:** лише читання                                       
+      244 +                                                              
+      245 +### Призначення                                               
+      246 +                                                              
+      247 +Отримує список вимог (план, специфікацію або опис задачі) і пе
+          +ревіряє, чи кожна вимога реалізована в коді. Повертає матрицю 
+          +трасування: REQ-ID → місце реалізації або «не знайдено». Не ко
+          +ментує якість коду — тільки факт наявності чи відсутності реал
+          +ізації.                                                       
+      248 +                                                              
+      249 +### Коли використовувати                                      
+      250 +                                                              
+      251 +- Після завершення реалізації: «чи все з плану зроблено?»     
+      252 +- Перед PR: перевірити, що жодна вимога з тікету не пропущена 
+      253 +- Коли замовник або тімлід надає чеклист вимог                
+      254 +                                                              
+      255 +### Вхідний контракт                                          
+      256 +                                                              
+      257 +Надай агенту:                                                 
+      258 +1. Список вимог (вільний текст — агент сам призначить REQ-01, 
+          +REQ-02…)                                                      
+      259 +2. Скоуп для пошуку (конкретні файли або «весь репозиторій»)  
+      260 +                                                              
+      261 +### Формат виводу                                             
+      262 +                                                              
+      263 +```                                                           
+      264 +| REQ-ID | Description | Status | Location |                  
+      265 +| REQ-01 | ...         | ✅ FOUND   | server/src/foo/service.t
+          +s:42 |                                                        
+      266 +| REQ-02 | ...         | ❌ NOT FOUND | — |                   
+      267 +| REQ-03 | ...         | ⚠️ PARTIAL | client/src/bar/page.tsx:1
+          +5 |                                                           
+      268 +```                                                           
+      269 +                                                              
+      270 +---                                                           
+      271 +                                                              
+      272 +## docs-creator                                               
+      273 +                                                              
+      274 +**Файл:** `docs-creator.md`                                   
+      275 +**Модель:** claude-sonnet (effort: high)                      
+      276 +**Інструменти:** Read, Write, Edit, Glob, Grep, Bash          
+      277 +**Заборонено:** Agent                                         
+      278 +**Режим:** `acceptEdits`                                      
+      279 +                                                              
+      280 +### Призначення                                               
+      281 +                                                              
+      282 +Перетворює код, нотатки і контекст від виклику на структурован
+          +у документацію для розробників. Знає, куди писати кожен тип до
+          +кумента. Ніколи не вигадує поведінку — документує тільки те, щ
+          +о є в коді або надано явно.                                   
+      283 +                                                              
+      284 +### Коли використовувати                                      
+      285 +                                                              
+      286 +- Потрібно задокументувати нову функцію, модуль або публічний 
+          +API                                                           
+      287 +- Є «сирі» нотатки, які треба перетворити на документ         
+      288 +- Потрібно додати JSDoc до публічних експортів TypeScript     
+      289 +                                                              
+      290 +### Куди пишуться документи                                   
+      291 +                                                              
+      292 +| Тип контенту | Цільове місце |                              
+      293 +|--------------|---------------|                              
+      294 +| Огляд функції / модуля | `docs/<feature-name>.md` |         
+      295 +| Правила модуля і gotcha | `<module>/AGENTS.md` (append) |   
+      296 +| Публічний TypeScript API | inline JSDoc в source-файлі |    
+      297 +| Лабораторні матеріали | `docs/lab-<N>/` |                   
+      298 +| Транскрипти сесій | `docs/sessions/` |                      
+      299 +| README пакету | `<package>/README.md` |                     
+      300 +                                                              
+      301 +### Критерії якості (застосовуються до кожного документа)     
+      302 +                                                              
+      303 +- **Completeness** — всі публічні API і налаштування описані  
+      304 +- **Helpfulness** — хоча б один практичний приклад на кожен AP
+          +I                                                             
+      305 +- **Truthfulness** — нічого не описується, що не підтверджено 
+          +кодом                                                         
+      306 +                                                              
+      307 +---                                                           
+      308 +                                                              
+      309  ## Джерела та пов'язані файли
+      310  
+      311  | Файл | Роль |
+
+⏺ Тепер верифікація.
+
+  Searched for 2 patterns (ctrl+o to expand)
+
+⏺ Всі 4 агенти створені і перевірені. Ось підсумок:
+
+  ┌──────────────────┬─────────────────────────────────┬──────┬────────────┐
+  │      Агент       │              Файл               │ Моде │   Доступ   │
+  │                  │                                 │  ль  │            │
+  ├──────────────────┼─────────────────────────────────┼──────┼────────────┤
+  │                  │                                 │ sonn │ read-write │
+  │ test-writer      │ .claude/agents/test-writer.md   │ et   │  (acceptEd │
+  │                  │                                 │      │ its)       │
+  ├──────────────────┼─────────────────────────────────┼──────┼────────────┤
+  │ architecture-rev │ .claude/agents/architecture-rev │ opus │ read-only  │
+  │ iewer            │ iewer.md                        │      │            │
+  ├──────────────────┼─────────────────────────────────┼──────┼────────────┤
+  │ plan-verifier    │ .claude/agents/plan-verifier.md │ sonn │ read-only  │
+  │                  │                                 │ et   │            │
+  ├──────────────────┼─────────────────────────────────┼──────┼────────────┤
+  │                  │                                 │ sonn │ read-write │
+  │ docs-creator     │ .claude/agents/docs-creator.md  │ et   │  (acceptEd │
+  │                  │                                 │      │ its)       │
+  └──────────────────┴─────────────────────────────────┴──────┴────────────┘
+
+  Що реалізовано на основі досліджень:
+
+  - test-writer — читає один існуючий тест як зразок перед написанням;
+  маршрутизує по 4 рівнях (hermetic/it.test/component/e2e JSON); пише лише в
+  test-директорії, ніколи в src/; запускає pnpm test і ітерує на провалах
+  - architecture-reviewer — opus для глибокого аналізу; скоуп чітко обмежений
+  (style/docs виключені); завжди читає весь модуль + залежності; severity за
+  правилами pr-self-review
+  - plan-verifier — три обов'язкових кроки (parse → search → classify); матриця
+  трасування з REQ-ID; жорсткий бан на коментарі щодо якості
+  - docs-creator — таблиця «куди писати» в інструкціях; обробка в порядку
+  залежностей; три критерії якості (completeness / helpfulness / truthfulness)
+
+  README.md оновлено з описом всіх 4 агентів українською.
+  ⎿  Stop says: [INSIGHTS] Running engineering-insights check...
+
+⏺ Ran 1 stop hook (ctrl+o to expand)
+  ⎿  Stop hook feedback: Use the engineering-insights skill now to
+  decide whether this session produced any non-obvious engineering
+  insight worth appending to INSIGHTS.md.
+
+⏺ Skill(engineering-insights)
+  ⎿  Successfully loaded skill · 3 tools allowed
+
+⏺ Робота відбувалась в .claude/agents/ — це проєктний рівень. Читаю кореневий
+  INSIGHTS.md.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Застосовую фільтр anti-banality до знахідок цієї сесії.
+
+  Кандидати:
+  1. plan-verifier потребує явної заборони коментарів щодо якості — без неї
+  агент природно розширює скоуп до code review (topFailer за 2024-2025
+  дослідженнями). У файлі є заборона, але не пояснення ЧОМУ → залишаю.
+  2. permissionMode відсутній = read-only — видно з researcher.md → відкидаю, 
+  очевидно.
+  3. Порядок документування по залежностях → вже вписаний у docs-creator.md →
+  відкидаю, видно з коду.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Update(INSIGHTS.md)
+  ⎿  Added 1 line
+      26  ## Codebase Patterns
+      27  
+      28  <!-- Non-default конвенції та архітектурні рішення цього проект
+          у -->
+      29 +[2026-06-29] plan-verifier agent needs explicit "do NOT comment
+         + on quality/style" prohibition in its system prompt — without i
+         +t, the agent naturally drifts into code review mode and never p
+         +roduces the traceability matrix; this is the #1 failure mode fo
+         +r requirement-tracing agents per 2024-2025 LLM research — .clau
+         +de/agents/plan-verifier.md                                     
+      30  
+      31  ## Tool & Library Notes
+      32  
+
+⏺ Оновлено: INSIGHTS.md (root), секція Codebase Patterns.
+
+  Записано:
+
+  ▎ [2026-06-29] plan-verifier agent needs explicit "do NOT comment on 
+  ▎ quality/style" prohibition in its system prompt — without it, the agent 
+  ▎ naturally drifts into code review mode and never produces the traceability 
+  ▎ matrix; this is the #1 failure mode for requirement-tracing agents per 
+  ▎ 2024-2025 LLM research — .claude/agents/plan-verifier.md
+
+  Відкинуто:
+  - permissionMode відсутній = read-only — очевидно з існуючих файлів
+  (researcher.md)
+  - Порядок документування по залежностях — вже в docs-creator.md, видно з коду
+
+✻ Sautéed for 11m 42s
+
+※ recap: Created 4 new agents: test-writer, architecture-reviewer, plan-verifier, docs-creator. All files are live in .claude/agents/ and README.md is updated. No further action needed. (disable recaps in /config)
+
+❯ /context 
+  ⎿  Context Usage
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛀ ⛀ ⛁   Sonnet 4.6
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   claude-sonnet-4-6
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   63.8k/200k tokens (32%)
+     ⛁ ⛁ ⛁ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ 
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   Estimated usage by category
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System prompt: 6.6k tokens (3.3%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System tools: 8.8k tokens (4.4%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Custom agents: 518 tokens (0.3%)
+     ⛶ ⛶ ⛶ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛁ Memory files: 732 tokens (0.4%)
+     ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛁ Skills: 1.7k tokens (0.8%)
+                           ⛁ Messages: 45.5k tokens (22.7%)
+                           ⛶ Free space: 103.2k (51.6%)
+                           ⛝ Autocompact buffer: 33k tokens (16.5%)
+
+     Auto-compact window: 200k tokens
+
+     Custom agents · /agents
+     └ 7 agents · 518 tokens
+
+     Memory files · /memory
+     └ 3 files · 732 tokens
+
+     Skills · /skills
+     └ 19 skills · 1.7k tokens
+
+     /context all to expand

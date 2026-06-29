@@ -26,6 +26,7 @@ Prune quarterly (stale entries are noise, not signal).
 ## Codebase Patterns
 
 <!-- Non-default конвенції та архітектурні рішення цього проекту -->
+[2026-06-29] plan-verifier agent needs explicit "do NOT comment on quality/style" prohibition in its system prompt — without it, the agent naturally drifts into code review mode and never produces the traceability matrix; this is the #1 failure mode for requirement-tracing agents per 2024-2025 LLM research — .claude/agents/plan-verifier.md
 
 ## Tool & Library Notes
 
