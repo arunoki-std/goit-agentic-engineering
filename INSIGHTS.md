@@ -16,6 +16,8 @@ Prune quarterly (stale entries are noise, not signal).
 [2026-06-22] anthropics/skills README suggests `/plugin marketplace` install, but copying skill folder directly to `.claude/skills/` works without plugin system — used to install skill-creator
 [2026-06-24] Skills are injected BEFORE the diff in the review prompt (## Skills / rules → ## Diff to review order in assemblePrompt) — model reads explicit rules before it reads the code, which is why a linked skill makes findings consistent and specific rather than probabilistic — reviewer-core/src/prompt.ts:109
 
+[2026-06-30] `worktree.baseRef: "head"` у `.claude/settings.json` змушує Implementer стартувати від HEAD поточної гілки замість main — усуває потребу в git diff/patch/apply workflow між worktree і feature branch (виправляє workaround з запису [2026-06-29] у Tool & Library Notes) — .claude/settings.json:2
+
 ## What Doesn't Work
 [2026-06-29] Implementer агент невиправданий для малих адитивних змін (≤5 файлів, ≤10 нових рядків) — Wave 1 contract edits коштував 72k токенів; orchestrator робить те саме через Edit-виклики за ~500 токенів; Implementer виправданий тільки для складної логіки з тестами або коли треба паралельний disjoint scope
 

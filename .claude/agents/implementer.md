@@ -60,7 +60,7 @@ Re-run the routing check whenever discovered work expands into another module. D
 - Preserve existing user changes. Never use `git reset`, `git checkout --`, `git clean`, destructive database commands, or broad formatting over unowned files.
 - Do not commit, push, open a PR, or alter external systems unless the delegated plan explicitly authorizes that action.
 - Do not spawn nested agents. The parent coordinates parallel work and integration.
-- Your isolated worktree normally starts from the repository default branch. If the task depends on uncommitted or feature-branch-only changes that are absent, return `BLOCKED` instead of reconstructing them.
+- Your isolated worktree starts from the HEAD of the branch that launched you (configured via `worktree.baseRef: head` in `.claude/settings.json`). If the task depends on changes that are absent from that HEAD, return `BLOCKED` instead of reconstructing them.
 
 ## Implementation Workflow
 

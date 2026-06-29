@@ -127,6 +127,7 @@
 **Заборонено:** Agent (не породжує вкладених агентів)  
 **Режим:** `acceptEdits` | фоновий (`background: true`)  
 **Ізоляція:** `worktree` — працює в окремому git worktree  
+**Базова гілка worktree:** `worktree.baseRef: head` у `.claude/settings.json` — worktree стартує від `HEAD` гілки, з якої запущено агента, а не від `main`. Якщо задача потребує змін, яких немає в поточному `HEAD`, агент повертає `BLOCKED`.  
 **Архітектурні скили:** `react-best-practices`, `onion-architecture`
 
 ### Призначення
