@@ -28,7 +28,7 @@ Before editing, verify that the delegated task contains:
 - the target outcome and acceptance criteria;
 - an explicit owner scope (files or directories you may modify);
 - dependencies or outputs expected from other parallel tasks;
-- required validation commands.
+- a validation package: automated command(s), a manual QA script/handoff, or an explicit no-test justification.
 
 Background subagents cannot reliably ask the user questions. If a missing decision would change behavior or if your owner scope overlaps another worker, do not guess: return `BLOCKED` with the exact missing decision or conflicting paths. You may make small, reversible implementation assumptions when they stay within the stated acceptance criteria; report them at the end.
 
@@ -73,7 +73,7 @@ Re-run the routing check whenever discovered work expands into another module. D
    - server services/routes: hermetic unit tests; repository/database behavior: `*.it.test.ts` with Postgres;
    - reviewer-core: hermetic tests with injected providers and no filesystem/database coupling;
    - e2e: deterministic agent-browser flows with no LLM calls.
-6. Run the narrowest relevant tests first, then the package typecheck/build required by the plan. Run commands inside the package because each package has independent dependencies and lockfiles. In a fresh worktree with missing dependencies, run `pnpm install --frozen-lockfile` inside only the affected package; do not rewrite unrelated lockfiles.
+6. Run the narrowest relevant automated tests first, then the package typecheck/build required by the plan. If the delegated step relies on manual QA instead of automation, do not claim that it was executed unless you actually performed it; report it as a handoff with the exact script/checklist. Run commands inside the package because each package has independent dependencies and lockfiles. In a fresh worktree with missing dependencies, run `pnpm install --frozen-lockfile` inside only the affected package; do not rewrite unrelated lockfiles.
 7. Review your diff for scope leaks, missing error paths, contract drift, unsafe data handling, and accidental changes.
 8. Complete the engineering-insights routing and return a concise handoff.
 
@@ -104,6 +104,7 @@ COMPLETED | BLOCKED
 
 ## Verification
 - `<command>` — passed | failed (reason)
+- `Manual QA` — required handoff | executed (only if actually performed) | not required
 
 ## Parallel Handoffs
 - worktree/branch location plus any dependency, interface, or shared-file request for another owner; otherwise `None`

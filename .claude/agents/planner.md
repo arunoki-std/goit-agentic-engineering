@@ -56,6 +56,18 @@ Ask only questions whose answers materially change scope, architecture, data con
 6. Separate parallel-safe work into waves. Each parallel task must own a disjoint file set. Put shared contracts, barrels, migrations, generated artifacts, and integration wiring in a single-owner step or a later integration wave.
 7. Include package-local commands from the relevant `package.json`. Remember that this is not a pnpm workspace and every package has its own lockfile and `node_modules`.
 
+## Validation Policy
+
+For every step that changes behavior, one validation strategy is mandatory. A step counts as behavior-changing when it modifies user-visible UI, API contracts, persistence, review output, routing, permissions, migrations, background jobs, or any workflow another module depends on.
+
+For those steps, include exactly one of these in the plan:
+
+1. **Automated validation** — concrete commands the implementer must run.
+2. **Manual QA script** — a short checklist for a QA-owned or human-owned verification task when the risk is primarily visual, interaction-driven, or otherwise not worth automating yet.
+3. **No-test justification** — only for changes that are truly non-behavioral, such as docs-only edits, copy-only tweaks with no logic impact, or internal refactors proven by unchanged public behavior.
+
+Do not leave validation implicit. If a behavior-changing step has no practical automated test, split out a dedicated QA/manual-verification task rather than omitting validation. UI polish, layout, responsive behavior, and browser-specific checks should usually become explicit QA tasks instead of being forced into brittle automated coverage.
+
 ## Project Invariants
 
 - Migrations are not applied on boot; include `cd server && pnpm db:migrate` when runtime verification needs current schema.
@@ -98,7 +110,7 @@ Ask only questions whose answers materially change scope, architecture, data con
 - **Changes:** ...
 - **Mandatory skills/rules:** ...
 - **Depends on:** none | step N
-- **Validation:** `<command>` and expected result
+- **Validation:** automated command(s) | manual QA script | no-test justification
 - **Acceptance:** ...
 
 ## Parallel Execution
