@@ -53,7 +53,7 @@ Ask only questions whose answers materially change scope, architecture, data con
    - mandatory skill or module instructions;
    - dependencies on earlier steps;
    - tests and acceptance checks.
-6. Separate parallel-safe work into waves. Each parallel task must own a disjoint file set. Put shared contracts, barrels, migrations, generated artifacts, and integration wiring in a single-owner step or a later integration wave.
+6. Separate parallel-safe work into waves. Each parallel task must own a disjoint file set. Put shared contracts, barrels, migrations, generated artifacts, and integration wiring in a single-owner step or a later integration wave. When a later wave depends on the output of an earlier one, mark the earlier wave `CHECKPOINT REQUIRED`. A checkpoint wave must include: (a) explicit test commands, (b) a commit message for the orchestrator to use, and (c) instruction to record the resulting SHA and pass it as `baseline_sha` to every dependent-wave agent. Do not schedule a dependent wave without a checkpoint between it and its blocking predecessor.
 7. Include package-local commands from the relevant `package.json`. Remember that this is not a pnpm workspace and every package has its own lockfile and `node_modules`.
 
 ## Validation Policy
@@ -114,10 +114,20 @@ Do not leave validation implicit. If a behavior-changing step has no practical a
 - **Acceptance:** ...
 
 ## Parallel Execution
-### Wave 1
+### Wave 1 — CHECKPOINT REQUIRED
 - Task A — owner scope, dependencies, expected handoff
 - Task B — owner scope, dependencies, expected handoff
-### Integration Wave
+
+**Checkpoint protocol (orchestrator runs before Wave 2):**
+1. Merge all Wave 1 worktrees into the feature branch.
+2. Run: `<test commands>`
+3. Commit: `git commit -m "chore: checkpoint — wave 1 complete"`
+4. Record the resulting SHA and pass it as `baseline_sha` to every Wave 2 agent.
+
+### Wave 2 (requires Wave 1 checkpoint; baseline_sha: <SHA recorded above>)
+- Task C — owner scope, dependencies, expected handoff
+
+### Integration Wave (no worktree isolation — use `integrator` agent)
 - Shared-file owner and integration checks
 
 ## Test Matrix

@@ -28,7 +28,8 @@ Before editing, verify that the delegated task contains:
 - the target outcome and acceptance criteria;
 - an explicit owner scope (files or directories you may modify);
 - dependencies or outputs expected from other parallel tasks;
-- a validation package: automated command(s), a manual QA script/handoff, or an explicit no-test justification.
+- a validation package: automated command(s), a manual QA script/handoff, or an explicit no-test justification;
+- `baseline_sha` — required when `Depends on` lists a prior wave; the SHA of that wave's checkpoint commit. Absent when the task has no upstream wave dependency.
 
 Background subagents cannot reliably ask the user questions. If a missing decision would change behavior or if your owner scope overlaps another worker, do not guess: return `BLOCKED` with the exact missing decision or conflicting paths. You may make small, reversible implementation assumptions when they stay within the stated acceptance criteria; report them at the end.
 
@@ -60,7 +61,13 @@ Re-run the routing check whenever discovered work expands into another module. D
 - Preserve existing user changes. Never use `git reset`, `git checkout --`, `git clean`, destructive database commands, or broad formatting over unowned files.
 - Do not commit, push, open a PR, or alter external systems unless the delegated plan explicitly authorizes that action.
 - Do not spawn nested agents. The parent coordinates parallel work and integration.
-- Your isolated worktree starts from the HEAD of the branch that launched you (configured via `worktree.baseRef: head` in `.claude/settings.json`). If the task depends on changes that are absent from that HEAD, return `BLOCKED` instead of reconstructing them.
+- Your isolated worktree starts from the HEAD of the branch that launched you (configured via `worktree.baseRef: head` in `.claude/settings.json`). If the task packet includes `baseline_sha`, verify before editing that the checkpoint commit is in the worktree's ancestry:
+
+  git merge-base --is-ancestor <baseline_sha> HEAD
+
+If that command exits non-zero, return `BLOCKED: baseline_sha <sha> is not an ancestor of worktree HEAD — orchestrator must merge the blocking wave and re-launch this agent`. Do not reconstruct or cherry-pick the missing changes.
+
+If no `baseline_sha` is provided but the task lists upstream wave dependencies, return `BLOCKED: task declares upstream wave dependency but baseline_sha was not supplied`.
 
 ## Implementation Workflow
 
@@ -92,6 +99,9 @@ Re-run the routing check whenever discovered work expands into another module. D
 ```markdown
 ## Status
 COMPLETED | BLOCKED
+
+## Baseline
+<baseline_sha verified> | not applicable (no upstream wave dependency)
 
 ## Implemented
 - plan step and behavior delivered
