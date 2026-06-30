@@ -26,6 +26,7 @@ Collect from the conversation:
 - the original user prompt and acceptance criteria;
 - the approved plan and task boundaries;
 - the planning lane selected and every research/planning agent invoked;
+- the `Already verified evidence` passed to each implementer (Evidence Index or facts summary from Researcher/Planner), or note `None` if no discovery agent ran;
 - task-start `HEAD` and pre-existing dirty paths when recorded;
 - complete subagent handoffs, especially files changed, verification results, assumptions, and review inputs;
 - commands actually run and their results;
@@ -53,6 +54,7 @@ Mode: active-session | external-review
 Outcome and requirements: ...
 Approved plan/task boundary: ...
 Planning lane and agents invoked: ...
+Already verified evidence: Evidence Index or verified-facts summary passed to implementers | None
 Baseline HEAD and pre-existing changes: ... | unknown
 Review target: working tree | commit/ref
 Owner scope: ... | infer and flag uncertainty

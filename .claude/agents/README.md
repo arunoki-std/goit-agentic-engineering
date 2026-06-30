@@ -40,6 +40,30 @@ Broad/external research:
 | Передумова | `baseline_sha` попередньої хвилі | checkpoint commit після злиття всіх worktree-гілок |
 | Backport | `BLOCKED` якщо потрібний код не в HEAD | `BLOCKED` якщо merge не виконано |
 
+## Стандарт discovery packet
+
+Всі read-only агенти (researcher, planner) класифікують кожне читання за типом, щоб уникнути марних витрат context budget:
+
+| Тип | Назва | Визначення | Ціль |
+|---|---|---|---|
+| Type 1 | Primary read | Читання контенту, якого ще немає в Evidence Index; встановлює нове verified claim | необмежено |
+| Type 2 | Spot-check | Повторне читання вже проіндексованого контенту з reason tag | мінімізувати |
+| Type 3 | Duplicate read | Повторне читання вже проіндексованого контенту без reason tag; витрачає context budget | 0 |
+
+Дозволені reason tags для Type 2: `stale check`, `missing evidence`, `cross-check`, `implementation detail`.
+
+Кожен read-only агент додає до свого виводу read metrics:
+- **researcher** — `## Read Metrics` з підрахунком Type 1 / Type 2 / Type 3 після `## Recommended Spot-checks`.
+- **planner** — `Read metrics: Type 1 = N, Type 2 = N, Type 3 = N` у розділі `## Discovery Reuse`.
+
+Кожен task packet implementer-а повинен містити поле `Already verified evidence` — Evidence Index або зведення verified facts від попереднього Researcher або Planner; або `None`, якщо жоден discovery агент не запускався. Implementer використовує це поле замість broad re-discovery.
+
+Acceptance thresholds для будь-якої сесії:
+- Проста двофайлова задача: 0 викликів Researcher/Planner, максимум один Explore.
+- Після Researcher — Planner не повторює broad discovery (Type 3 = 0 у Discovery Reuse).
+- Duplicate reads без reason tag: 0 у всіх read-only агентах.
+- Implementer отримує тільки owner scope, symbols і verified evidence.
+
 ---
 
 ## researcher
@@ -472,4 +496,4 @@ Skill `.claude/skills/review-task/SKILL.md` спочатку формує review
 /review-task
 ```
 
-Команда бере вимоги, план, результати інструментів і handoff-и субагентів із поточного чату та перевіряє незакомічений результат. `/save-session` потрібен лише для архіву або повторного cross-session review. Worktree-Implementer повертає `Review Inputs`, а orchestrator додає їх до review packet.
+Команда бере вимоги, план, результати інструментів і handoff-и субагентів із поточного чату та перевіряє незакомічений результат. `/save-session` потрібен лише для архіву або повторного cross-session review. Worktree-Implementer повертає `Review Inputs`, а orchestrator додає їх до review packet. Completion-reviewer також перевіряє discovery hygiene згідно зі [Стандартом discovery packet](#стандарт-discovery-packet): наявність `Already verified evidence` в packet, відсутність Type 3 duplicate reads, та read metrics у `## Discovery Reuse` плану.

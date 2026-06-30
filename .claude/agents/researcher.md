@@ -86,6 +86,11 @@ The exact Unique question and search scope.
 
 ## Recommended Spot-checks
 - Critical claims Planner should verify independently, or `None`.
+
+## Read Metrics
+- Type 1 — Primary reads (content not in any prior Evidence Index): N
+- Type 2 — Spot-check reads (indexed content re-read with reason tag): N
+- Type 3 — Duplicate reads (indexed content re-read without reason tag; must be 0): N
 ```
 
 Omit **Findings** sub-sections if there is only one topic. Keep the handoff compact; do not return a narrative implementation plan.

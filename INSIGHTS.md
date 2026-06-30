@@ -25,6 +25,8 @@ Prune quarterly (stale entries are noise, not signal).
 [2026-06-22] Renaming CLAUDE.md → AGENTS.md silently breaks Claude Code — it reads only CLAUDE.md, not AGENTS.md; no warning is given
 [2026-06-22] When creating a new skill, Claude bypassed `skill-creator` and wrote SKILL.md by hand — `skill-creator` should run first: it generates eval cases and measures trigger quality in the description; writing manually skips that feedback loop — .claude/skills/
 [2026-06-23] skill-creator `aggregate_benchmark.py` silently produces empty benchmark.json (delta: +0.00, all zeros) when grading.json sits directly in `with_skill/` — script uses `glob("run-*")` and expects `with_skill/run-1/grading.json`; no error or warning is printed — .claude/skills/skill-creator/scripts/aggregate_benchmark.py:106
+[2026-06-30] Completion-reviewer multi-clause P2 gotcha: when appending several `flag P2 when X and Y` clauses in one paragraph edit, verify that guard condition X is identical across ALL clauses — middle clause silently lost its "when a Researcher or Planner ran" guard, relied on vacuous truth, caught only by a live control session — .claude/agents/completion-reviewer.md:39
+[2026-06-30] @researcher is the wrong lane for cross-package LOCAL codebase discovery ("where is RunStats defined, how does client consume it") — that is @planner's job; @researcher is reserved for external knowledge (library docs, API specs, org sources); using @researcher for local traces wastes one agent invocation and sets a wrong pattern even when Type 3 = 0
 
 ## Codebase Patterns
 
@@ -32,6 +34,7 @@ Prune quarterly (stale entries are noise, not signal).
 [2026-06-29] plan-verifier agent needs explicit "do NOT comment on quality/style" prohibition in its system prompt — without it, the agent naturally drifts into code review mode and never produces the traceability matrix; this is the #1 failure mode for requirement-tracing agents per 2024-2025 LLM research — .claude/agents/plan-verifier.md
 [2026-06-29] `server/src/vendor/shared/` і `client/src/vendor/shared/` НЕ linked через npm/pnpm — будь-яка зміна Zod-контракту (Intent, PromptAssembly тощо) мусить бути вручну продубльована в обидва шляхи; client компілюється проти власної копії і не дає помилки при розсинхроні — server/src/vendor/shared/contracts/ + client/src/vendor/shared/contracts/
 [2026-06-29] Уточнення: reviewer-core читає @devdigest/shared безпосередньо з server/src/vendor/shared/ через tsconfig path alias (не має власної копії) — при змінах контрактів є рівно ДВА targets для sync (server = source, client = mirror), не три — reviewer-core/tsconfig.json
+[2026-06-30] run-cost-badge spec (specs/run-cost-badge.md) appeared to require new implementation but was largely already done: cost_usd in both shared types (trace.ts:62-117), listRunsForPull() already calls estimateCost() (run.repo.ts:63), RunHistory.tsx:203 already renders cost inline, Screen 1 (PRRow) and Screen 3 (TraceBody formatCost) complete — only RunCostInline component extraction remained
 
 ## Tool & Library Notes
 

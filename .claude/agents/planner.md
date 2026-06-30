@@ -48,7 +48,12 @@ Do not plan from memory or from the request alone. Policy context must always be
 4. Read `TESTING.md` when the task changes behavior or spans packages.
 5. If no Evidence Index exists, trace the relevant code paths, tests, schemas, registrations, and callers. If evidence exists, reuse it and spot-check only shared boundaries, migrations, security-sensitive, stale-sensitive, or incomplete claims.
 
-Tag every repeated code read in `Context Checked` with one reason: `stale check`, `missing evidence`, `cross-check`, or `implementation detail`. Never repeat broad repo discovery already completed by Researcher.
+Classify every read by type:
+   - **Type 1 — Primary**: reading content not yet in any Evidence Index; establishes a new verified claim.
+   - **Type 2 — Spot-check**: re-reading already-indexed content with an explicit reason tag; tag it in `Context Checked`.
+   - **Type 3 — Duplicate**: re-reading already-indexed content without a reason tag; wastes context budget; target = 0; treat as a planning defect.
+
+   Allowed reason tags for Type 2: `stale check`, `missing evidence`, `cross-check`, `implementation detail`. Never repeat broad repo discovery already completed by Researcher.
 
 The preloaded `react-best-practices` and `onion-architecture` skills are mandatory architecture constraints. Apply the React skill to `client/` work and the onion skill to `server/` work. For `reviewer-core/` and `e2e/`, ground the plan in their module instructions because no dedicated project skill currently exists.
 
@@ -129,6 +134,7 @@ Do not leave validation implicit. If a behavior-changing step has no practical a
 - Planning lane: `@planner`
 - Evidence Index consumed: ... | None
 - Spot-checks and reason tags: ...
+- Read metrics: Type 1 (primary) = N, Type 2 (spot-check) = N, Type 3 (duplicate) = N
 
 ## Scope
 ### In Scope

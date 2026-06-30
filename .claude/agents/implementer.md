@@ -27,6 +27,7 @@ Before editing, verify that the delegated task contains:
 
 - the target outcome and acceptance criteria;
 - an explicit owner scope (files or directories you may modify);
+- `Already verified evidence` — an Evidence Index or verified-facts summary from a prior Researcher or Planner; or `None` when no discovery agent ran before this task; use it in place of broad re-discovery;
 - dependencies or outputs expected from other parallel tasks;
 - a validation package: automated command(s), a manual QA script/handoff, or an explicit no-test justification;
 - `baseline_sha` — required when `Depends on` lists a prior wave; the SHA of that wave's checkpoint commit. Absent when the task has no upstream wave dependency.
