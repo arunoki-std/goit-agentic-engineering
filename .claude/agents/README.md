@@ -155,7 +155,7 @@ Manual planning owner для project-specific, cross-package, ризикових
 
 ---
 
-## implementer
+## implementer (cross-module)
 
 **Файл:** `implementer.md`  
 **Модель:** claude-sonnet (effort: high)  
@@ -163,22 +163,22 @@ Manual planning owner для project-specific, cross-package, ризикових
 **Заборонено:** Agent (не породжує вкладених агентів)  
 **Режим:** `acceptEdits` | фоновий (`background: true`)  
 **Ізоляція:** `worktree` — працює в окремому git worktree  
-**Базова гілка worktree:** `worktree.baseRef: head` у `.claude/settings.json` — worktree стартує від `HEAD` гілки, з якої запущено агента, а не від `main`. Якщо задача потребує змін, яких немає в поточному `HEAD`, агент повертає `BLOCKED`.  
 **Архітектурні скили:** `react-best-practices`, `onion-architecture`
 
 ### Призначення
 
-Реалізує один самостійний зріз затвердженого плану розробки. Може редагувати код і запускати верифікацію, але область повноважень визначає делегований крок плану. Кілька інстанцій можуть виконуватись паралельно — за умови, що їхні файли не перетинаються.
+Запасний варіант для рідкісних задач, що одночасно зачіпають **більше одного модуля** (наприклад, client/ + server/). Завантажує обидва архітектурні скили. Для задач з одним модулем — використовуй спеціалізований варіант нижче.
 
-### Обов'язковий handoff перед стартом
+### Routing за модулем
 
-Агент перевіряє, що делегована задача містить:
-- очікуваний результат і критерії приймання
-- явний `owner scope` (файли або директорії, які він може змінювати)
-- залежності від інших паралельних задач
-- пакет валідації: команди, manual QA script або явний `no-test justification`
+| Owner scope задачі | Агент |
+|---|---|
+| Лише `client/**` | **`implementer-client`** — тільки `react-best-practices` |
+| Лише `server/**` | **`implementer-server`** — тільки `onion-architecture` |
+| Лише `reviewer-core/**` або `e2e/**` | **`implementer-core`** — без архітектурних скилів |
+| Кілька модулів одночасно | `implementer` (цей) — завантажує обидва скили |
 
-Якщо якийсь із елементів відсутній або власність файлів перетинається з іншим виконавцем — повертає `BLOCKED` без будь-яких змін.
+Правило: агент не завантажує правила модулів, яких він не торкається.
 
 ### Маршрутизація скилів
 
@@ -216,6 +216,42 @@ Manual planning owner для project-specific, cross-package, ризикових
 ## Assumptions, Risks, and Follow-ups
 ## Insight Candidates — нетривіальні знахідки для INSIGHTS.md
 ```
+
+---
+
+## implementer-client
+
+**Файл:** `implementer-client.md`  
+**Інструменти:** Read, Write, Edit, Glob, Grep, Bash, Skill  
+**Заборонено:** Agent, WebSearch, WebFetch  
+**Режим:** `acceptEdits` | фоновий | ізоляція: `worktree`  
+**Скил:** `react-best-practices` (тільки)
+
+Реалізує задачі в `client/**`. Не завантажує `onion-architecture`. Якщо scope виходить за межі `client/` — повертає `BLOCKED`.
+
+---
+
+## implementer-server
+
+**Файл:** `implementer-server.md`  
+**Інструменти:** Read, Write, Edit, Glob, Grep, Bash, Skill  
+**Заборонено:** Agent, WebSearch, WebFetch  
+**Режим:** `acceptEdits` | фоновий | ізоляція: `worktree`  
+**Скил:** `onion-architecture` (тільки)
+
+Реалізує задачі в `server/**`. Не завантажує `react-best-practices`. Якщо scope виходить за межі `server/` — повертає `BLOCKED`.
+
+---
+
+## implementer-core
+
+**Файл:** `implementer-core.md`  
+**Інструменти:** Read, Write, Edit, Glob, Grep, Bash, Skill  
+**Заборонено:** Agent, WebSearch, WebFetch  
+**Режим:** `acceptEdits` | фоновий | ізоляція: `worktree`  
+**Скили:** немає (reviewer-core та e2e не мають виділеного архітектурного скилу)
+
+Реалізує задачі в `reviewer-core/**` або `e2e/**`. Читає локальні `AGENTS.md` та `INSIGHTS.md` відповідного пакету. Якщо scope виходить за межі цих двох пакетів — повертає `BLOCKED`.
 
 ---
 
