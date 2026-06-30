@@ -1,0 +1,419 @@
+ ▐▛███▜▌   Claude Code v2.1.196
+▝▜█████▛▘  Sonnet 4.6 · Claude Pro
+  ▘▘ ▝▝    ~/Projects/goit-agentic-engineering
+
+
+❯ Завершити enforcement вибору Implementer-ів                                   
+                                                                                
+  Додати Planner-у Agent Selection Policy:                                      
+                                                                                
+  - механічна зміна приблизно до 5 файлів / 10 рядків — main agent;             
+  - одна зв’язна задача в одному модулі — один Implementer;                     
+  - кілька Implementer-ів — лише для двох або більше істотних,                  
+    незалежних і disjoint outcomes;                                             
+  - не створювати Parallel Execution для single-owner задач;                    
+  - checkpoint потрібний лише між реально залежними хвилями;                    
+  - у плані явно вказувати:                                                     
+    Execution mode: main | single implementer | parallel implementers |         
+  integrator.                                                                   
+                                                                                
+  Completion-reviewer перевіряє відповідність execution mode фактичному scope.  
+                                                                                
+  Acceptance:                                                                   
+  - двофайлова agent-config зміна → main agent, без wave;                       
+  - одна server feature → один Implementer;                                     
+  - незалежні client/server outcomes → два паралельні Implementer-и;            
+  - shared wiring → окремий Integrator після checkpoint;                        
+  - жодної порожньої або тривіальної implementer-wave.                          
+
+⏺ Починаю з паралельного дослідження конфігурацій planner та
+  completion-reviewer.
+
+⏺ 2 background agents launched (↓ to manage)
+   ├ Explore planner and completion-reviewer agent configs
+   └ Explore implementer agent config and wave/checkpoint patterns
+
+⏺ Агенти запущені паралельно, чекаю результатів.
+
+⏺ Waiting for explore agents to complete.
+
+✻ Cooked for 21s
+
+⏺ Agent "Explore planner and completion-reviewer agent configs" finished · 1m 7s
+
+⏺ Перший агент завершено, чекаю другого.
+
+✻ Worked for 3s
+
+⏺ Agent "Explore implementer agent config and wave/checkpoint patterns" finished
+· 1m 57s
+
+⏺ Маю всю картину. Читаю обидва файли безпосередньо перед написанням плану.
+
+  Read 2 files (ctrl+o to expand)
+
+⏺ Тепер пишу фінальний план.
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ User approved Claude's plan
+  ⎿  Plan saved to: ~/.claude/plans/enforcement-implementer-prancy-cosmos.md · 
+     /plan to edit
+     Development Plan: Agent Selection Policy Enforcement
+
+     Execution mode: main
+
+     Context
+
+     The planner agent currently has a wave/checkpoint protocol but no explicit
+     rule governing when to use a main agent, a single implementer, or parallel
+     implementers. As a result, planners over-allocate — creating
+     multi-implementer waves for single-owner tasks. The completion-reviewer
+     also lacks an explicit check for execution-mode mismatch.
+
+     This task adds an Agent Selection Policy section to planner.md and a
+     corresponding execution-mode verification check to completion-reviewer.md,
+     then exposes the declared mode as a required field in the plan output
+     template.
+
+     Scope: 2 agent config files, ~25 lines added. No implementer needed — main
+     agent applies directly.
+
+     Files
+
+     - .claude/agents/planner.md
+     - .claude/agents/completion-reviewer.md
+
+     Implementation Steps
+
+     1. Add ## Agent Selection Policy to planner.md
+
+     Insert a new section between ## Planning Method (line 73) and ## Validation
+     Policy (line 75).
+
+     Content:
+
+     ## Agent Selection Policy
+
+     Classify the task before assigning execution resources. Apply the first
+     matching threshold:
+
+     | Threshold | Execution mode |
+     |---|---|
+     | Mechanical change: ≤ 5 files, ≤ 10 new lines, no complex logic or tests |
+     `main` — orchestrator applies directly; no implementer |
+     | One cohesive task in one module | `single implementer` — one isolated
+     worktree |
+     | Two or more substantial, independent, disjoint outcomes | `parallel
+     implementers` — one worktree per outcome |
+     | Shared cross-module wiring after parallel waves | `integrator` — runs in
+     main worktree after checkpoint merge |
+
+     Enforcement rules:
+     - A task with a single owner is always `single implementer`, never
+     `parallel implementers`, even if it spans multiple files in that module.
+     - A Checkpoint is required only when a later wave genuinely depends on the
+     output of the earlier one. Do not add checkpoints between independent
+     waves.
+     - Do not create empty or trivial implementer waves (no wave whose only
+     content is a config edit or a one-line change).
+     - The plan output must include an explicit `Execution mode:` field (see
+     Required Output).
+
+     Where exactly: insert after the blank line following step 7 (line 73) and
+     before the ## Validation Policy heading (line 75).
+
+     2. Add Execution mode: field to the ## Required Output template in 
+     planner.md
+
+     After the # Development Plan: <short title> title line (line 101), add:
+
+     **Execution mode:** `main` | `single implementer` | `parallel implementers`
+     | `integrator`
+
+     Choose exactly one value. This line must appear in every plan the planner
+     produces.
+
+     3. Extend step 7 in completion-reviewer.md with execution-mode verification
+
+     Current step 7 (line 39) ends with: ... Flag overlapping planning/discovery
+     ownership as P2. Report measured time/context only when explicitly 
+     present.
+
+     Append to that sentence:
+
+     Also verify that the plan's declared `Execution mode` matches actual scope:
+     flag P1 if parallel implementers were used for a single-owner task; flag
+     P1 if a checkpoint is missing between genuinely dependent waves or present
+     between independent ones; flag P2 if a trivial or empty implementer wave
+     was created; flag P2 if the plan omits the `Execution mode:` field
+     entirely.
+
+     Verification
+
+     After applying:
+     1. Open .claude/agents/planner.md — confirm the new ## Agent Selection 
+     Policy section appears between ## Planning Method and ## Validation Policy,
+     and the Execution mode: line appears in the output template.
+     2. Open .claude/agents/completion-reviewer.md — confirm step 7 now includes
+     the execution-mode mismatch checks with correct severity labels.
+     3. Mentally apply acceptance examples from the spec:
+       - Two-file agent-config change → plan declares main, reviewer passes
+     without wave check.
+       - One server feature → plan declares single implementer, one worktree
+     launched.
+       - Independent client/server outcomes → plan declares parallel 
+     implementers, two worktrees with disjoint scopes.
+       - Shared wiring → plan declares integrator after checkpoint.
+       - Empty wave → reviewer flags P2.
+
+     Definition of Done
+
+     - [ ] planner.md contains ## Agent Selection Policy with the four-row
+     threshold table and enforcement rules
+     - [ ] planner.md output template requires Execution mode: field
+     - [ ] completion-reviewer.md step 7 checks execution-mode match with P1/P2
+     severities
+     - [ ] No other files modified
+
+⏺ Виконую три редагування паралельно.
+
+⏺ Update(.claude/agents/planner.md)
+  ⎿  Added 17 lines
+      72  6. Separate parallel-safe work into waves. Each parallel task m
+          ust own a disjoint file set. Put shared contracts, barrels, mig
+          rations, generated artifacts, and integration wiring in a singl
+          e-owner step or a later integration wave. When a later wave dep
+          ends on the output of an earlier one, mark the earlier wave `CH
+          ECKPOINT REQUIRED`. A checkpoint wave must include: (a) explici
+          t test commands, (b) a commit message for the orchestrator to u
+          se, and (c) instruction to record the resulting SHA and pass it
+           as `baseline_sha` to every dependent-wave agent. Do not schedu
+          le a dependent wave without a checkpoint between it and its blo
+          cking predecessor.
+      73  7. Include package-local commands from the relevant `package.js
+          on`. Remember that this is not a pnpm workspace and every packa
+          ge has its own lockfile and `node_modules`.
+      74  
+      75 +## Agent Selection Policy                                      
+      76 +                                                               
+      77 +Classify the task before assigning execution resources. Apply t
+         +he first matching threshold:                                   
+      78 +                                                               
+      79 +| Threshold | Execution mode |                                 
+      80 +|---|---|                                                      
+      81 +| Mechanical change: ≤ 5 files, ≤ 10 new lines, no complex logi
+         +c or tests | `main` — orchestrator applies directly; no impleme
+         +nter |                                                         
+      82 +| One cohesive task in one module | `single implementer` — one 
+         +isolated worktree |                                            
+      83 +| Two or more substantial, independent, disjoint outcomes | `pa
+         +rallel implementers` — one worktree per outcome |              
+      84 +| Shared cross-module wiring after parallel waves | `integrator
+         +` — runs in main worktree after checkpoint merge |             
+      85 +                                                               
+      86 +Enforcement rules:                                             
+      87 +- A task with a single owner is always `single implementer`, ne
+         +ver `parallel implementers`, even if it spans multiple files in
+         + that module.                                                  
+      88 +- A Checkpoint is required only when a later wave genuinely dep
+         +ends on the output of the earlier one. Do not add checkpoints b
+         +etween independent waves.                                      
+      89 +- Do not create empty or trivial implementer waves (no wave who
+         +se only content is a config edit or a one-line change).        
+      90 +- The plan output must include an explicit `Execution mode:` fi
+         +eld (see Required Output).                                     
+      91 +                                                               
+      92  ## Validation Policy
+      93  
+      94  For every step that changes behavior, one validation strategy i
+          s mandatory. A step counts as behavior-changing when it modifie
+          s user-visible UI, API contracts, persistence, review output, r
+          outing, permissions, migrations, background jobs, or any workfl
+          ow another module depends on.
+
+⏺ Update(.claude/agents/planner.md)
+  ⎿  Added 2 lines
+      117  ```markdown
+      118  # Development Plan: <short title>
+      119  
+      120 +**Execution mode:** `main` | `single implementer` | `parallel 
+          +implementers` | `integrator`                                  
+      121 +                                                              
+      122  ## Outcome
+      123  <user-visible or system-visible result>
+      124  
+
+⏺ Update(.claude/agents/completion-reviewer.md)
+  ⎿  Added 1 line, removed 1 line
+      36  4. Check every changed file against the stated owner scope. Fla
+          g future-task work, unrelated artifacts, generated files, lockf
+          iles, workspace files, and documentation drift.
+      37  5. Run deterministic read-only hygiene checks against the selec
+          ted target: `git diff --check` for the active working tree or `
+          git diff --check <parent> <commit>` for a commit. Verify that r
+          eferenced agents, commands, files, and scripts actually exist i
+          n that target.
+      38  6. Distinguish verification that was actually executed from ver
+          ification that was only planned or claimed. Re-run only narrow,
+           safe checks when proportionate; never install dependencies, up
+          date snapshots, migrate databases, or mutate external systems.
+      39 -7. Assess prompt and process effectiveness from the review pack
+         -et's current-conversation evidence or a supplied session export
+         -. Verify that exactly one planning lane was used: Plan Mode/Exp
+         -lore, manual `@planner`, or manual `@researcher` → `@planner`. 
+         -Flag overlapping planning/discovery ownership as P2. Report mea
+         -sured time/context only when explicitly present.               
+      39 +7. Assess prompt and process effectiveness from the review pack
+         +et's current-conversation evidence or a supplied session export
+         +. Verify that exactly one planning lane was used: Plan Mode/Exp
+         +lore, manual `@planner`, or manual `@researcher` → `@planner`. 
+         +Flag overlapping planning/discovery ownership as P2. Report mea
+         +sured time/context only when explicitly present. Also verify th
+         +at the plan's declared `Execution mode` matches actual scope: f
+         +lag P1 if parallel implementers were used for a single-owner ta
+         +sk; flag P1 if a checkpoint is missing between genuinely depend
+         +ent waves or is present between independent ones; flag P2 if a 
+         +trivial or empty implementer wave was created; flag P2 if the p
+         +lan omits the `Execution mode:` field entirely.                
+      40  8. Review changed behavior for concrete regressions. Read calle
+          rs and adjacent contracts when necessary, but do not pad the re
+          port with generic advice.
+      41  
+      42  ## Severity
+
+⏺ Всі три зміни застосовано. Перевіряю результат:
+
+  Searched for 2 patterns (ctrl+o to expand)
+
+⏺ Все на місці. Ось що змінено:
+
+  planner.md — два доповнення:
+  1. Новий розділ ## Agent Selection Policy (рядок 75) між ## Planning Method і
+  ## Validation Policy — таблиця чотирьох режимів + enforcement rules.
+  2. Рядок **Execution mode:** (рядок 120) у шаблоні Required Output —
+  обов'язкове поле в кожному плані.
+
+  completion-reviewer.md — крок 7 розширено: перевірка відповідності Execution 
+  mode фактичному scope з P1 (parallel для single-owner, відсутній checkpoint
+  між залежними хвилями) та P2 (порожня wave, відсутнє поле).
+
+✻ Baked for 5m 39s
+
+❯ /context 
+  ⎿  Context Usage
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛀ ⛁ ⛀   Sonnet 4.6
+     ⛀ ⛀ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   claude-sonnet-4-6
+     ⛁ ⛁ ⛁ ⛁ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   44.3k/200k tokens (22%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ 
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   Estimated usage by category
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System prompt: 6.7k tokens (3.3%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System tools: 9.3k tokens (4.6%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ MCP tools: 3.3k tokens (1.7%)
+     ⛶ ⛶ ⛶ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛁ Custom agents: 607 tokens (0.3%)
+     ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛁ Memory files: 1.2k tokens (0.6%)
+                           ⛁ Skills: 1.7k tokens (0.8%)
+                           ⛁ Messages: 21.6k tokens (10.8%)
+                           ⛶ Free space: 122.7k (61.3%)
+                           ⛝ Autocompact buffer: 33k tokens (16.5%)
+
+     Auto-compact window: 200k tokens
+
+     MCP tools · /mcp
+     └ 10 tools · 3.3k tokens
+
+     Custom agents · /agents
+     └ 8 agents · 607 tokens
+
+     Memory files · /memory
+     └ 3 files · 1.2k tokens
+
+     Skills · /skills
+     └ 19 skills · 1.7k tokens
+
+     /context all to expand
+
+❯ /context all   ⎿  Context Usage
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛀ ⛁ ⛀   Sonnet 4.6
+     ⛀ ⛀ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   claude-sonnet-4-6
+     ⛁ ⛁ ⛁ ⛁ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   44.3k/200k tokens (22%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ 
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   Estimated usage by category
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System prompt: 6.7k tokens (3.3%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System tools: 9.3k tokens (4.6%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ MCP tools: 3.3k tokens (1.7%)
+     ⛶ ⛶ ⛶ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛁ Custom agents: 607 tokens (0.3%)
+     ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛁ Memory files: 1.2k tokens (0.6%)
+                           ⛁ Skills: 1.7k tokens (0.8%)
+                           ⛁ Messages: 22.9k tokens (11.4%)
+                           ⛶ Free space: 121.4k (60.7%)
+                           ⛝ Autocompact buffer: 33k tokens (16.5%)
+
+     Auto-compact window: 200k tokens
+
+     MCP tools · /mcp
+
+     Loaded
+     ├ mcp__claude_ai_Claude_Code_Remote__add_repo: 663 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__create_trigger: 873 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__delete_trigger: 154 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__fire_trigger: 274 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__list_environments: 109 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__list_repos: 208 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__list_triggers: 211 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__register_repo_root: 187 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__send_later: 334 tokens
+     └ mcp__claude_ai_Claude_Code_Remote__update_trigger: 295 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__add_repo: 663 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__create_trigger: 873 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__delete_trigger: 154 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__fire_trigger: 274 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__list_environments: 109 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__list_repos: 208 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__list_triggers: 211 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__register_repo_root: 187 tokens
+     ├ mcp__claude_ai_Claude_Code_Remote__send_later: 334 tokens
+     └ mcp__claude_ai_Claude_Code_Remote__update_trigger: 295 tokens
+
+     Custom agents · /agents
+
+     Project
+     ├ test-writer: 85 tokens
+     ├ planner: 81 tokens
+     ├ researcher: 81 tokens
+     ├ docs-creator: 75 tokens
+     ├ completion-reviewer: 73 tokens
+     ├ implementer: 73 tokens
+     ├ plan-verifier: 72 tokens
+     └ architecture-reviewer: 67 tokens
+
+     Memory files · /memory
+     ├ CLAUDE.md: 12 tokens
+     ├ AGENTS.md: 1.1k tokens
+     └ ~/.claude/projects/-Users-artem-slv-Projects-goit-agentic-engineering/memory/MEMORY.md: 130 tokens
+
+     Skills · /skills
+
+     Project
+     ├ onion-architecture: ~160 tokens
+     ├ pr-self-review: ~130 tokens
+     ├ react-best-practices: ~130 tokens
+     ├ skill-creator: ~80 tokens
+     ├ engineering-insights: ~60 tokens
+     └ wrap-up: ~30 tokens
+
+     Built-in
+     ├ claude-api: ~270 tokens
+     ├ update-config: ~180 tokens
+     ├ code-review: ~100 tokens
+     ├ schedule: ~100 tokens
+     ├ run: ~90 tokens
+     ├ loop: ~90 tokens
+     ├ verify: ~70 tokens
+     ├ keybindings-help: ~60 tokens
+     ├ fewer-permission-prompts: ~50 tokens
+     ├ simplify: ~50 tokens
+     ├ security-review: ~20 tokens
+     ├ review: ~20 tokens
+     └ init: < 20 tokens
