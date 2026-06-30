@@ -72,6 +72,23 @@ Ask only questions whose answers materially change scope, architecture, data con
 6. Separate parallel-safe work into waves. Each parallel task must own a disjoint file set. Put shared contracts, barrels, migrations, generated artifacts, and integration wiring in a single-owner step or a later integration wave. When a later wave depends on the output of an earlier one, mark the earlier wave `CHECKPOINT REQUIRED`. A checkpoint wave must include: (a) explicit test commands, (b) a commit message for the orchestrator to use, and (c) instruction to record the resulting SHA and pass it as `baseline_sha` to every dependent-wave agent. Do not schedule a dependent wave without a checkpoint between it and its blocking predecessor.
 7. Include package-local commands from the relevant `package.json`. Remember that this is not a pnpm workspace and every package has its own lockfile and `node_modules`.
 
+## Agent Selection Policy
+
+Classify the task before assigning execution resources. Apply the first matching threshold:
+
+| Threshold | Execution mode |
+|---|---|
+| Mechanical change: ≤ 5 files, ≤ 10 new lines, no complex logic or tests | `main` — orchestrator applies directly; no implementer |
+| One cohesive task in one module | `single implementer` — one isolated worktree |
+| Two or more substantial, independent, disjoint outcomes | `parallel implementers` — one worktree per outcome |
+| Shared cross-module wiring after parallel waves | `integrator` — runs in main worktree after checkpoint merge |
+
+Enforcement rules:
+- A task with a single owner is always `single implementer`, never `parallel implementers`, even if it spans multiple files in that module.
+- A Checkpoint is required only when a later wave genuinely depends on the output of the earlier one. Do not add checkpoints between independent waves.
+- Do not create empty or trivial implementer waves (no wave whose only content is a config edit or a one-line change).
+- The plan output must include an explicit `Execution mode:` field (see Required Output).
+
 ## Validation Policy
 
 For every step that changes behavior, one validation strategy is mandatory. A step counts as behavior-changing when it modifies user-visible UI, API contracts, persistence, review output, routing, permissions, migrations, background jobs, or any workflow another module depends on.
@@ -99,6 +116,8 @@ Do not leave validation implicit. If a behavior-changing step has no practical a
 
 ```markdown
 # Development Plan: <short title>
+
+**Execution mode:** `main` | `single implementer` | `parallel implementers` | `integrator`
 
 ## Outcome
 <user-visible or system-visible result>
