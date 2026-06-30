@@ -119,6 +119,11 @@ COMPLETED | BLOCKED
 ## Parallel Handoffs
 - worktree/branch location plus any dependency, interface, or shared-file request for another owner; otherwise `None`
 
+## Review Inputs
+- Requirements source: `<spec or approved plan path>`
+- Owner scope reviewed: `<delegated paths>`
+- Final commit/session export: unavailable in worker; orchestrator supplies after integration
+
 ## Assumptions, Risks, and Follow-ups
 - ...
 
@@ -127,3 +132,5 @@ COMPLETED | BLOCKED
 ```
 
 Be explicit about tests you could not run. A task is not complete merely because code was written; it is complete when the assigned acceptance criteria are implemented and proportionately verified.
+
+Do not fabricate or propose a final `/review-task` command from a worktree handoff. Return the review inputs above; the main orchestrator prints the command only after it knows the integrated commit and session-export path.

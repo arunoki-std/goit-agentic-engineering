@@ -3,14 +3,26 @@
 Цей каталог містить спеціалізованих агентів Claude Code для проекту DevDigest. Агенти утворюють конвеєр: **researcher** збирає факти, **planner** будує план реалізації, **implementer** втілює його в код. Кожен агент має чітко визначену відповідальність і не виходить за її межі.
 
 ```
-[researcher] ──→ [planner] ──→ [implementer] (один або декілька паралельно)
-   пошук           план             код
+[researcher] ──→ [planner] ──→ [implementer×N] ──checkpoint merge──→ [integrator]
+   пошук           план         (паралельно,                           (послідовно,
+                                 worktree)                              main worktree)
 
 [test-writer]          — пише тести після реалізації
 [architecture-reviewer]— перевіряє архітектуру перед PR
 [plan-verifier]        — звіряє код з вимогами плану
+[completion-reviewer]  — незалежно перевіряє завершену задачу перед прийняттям
 [docs-creator]         — генерує документацію
 ```
+
+### implementer vs integrator
+
+| | implementer | integrator |
+|---|---|---|
+| Isolation | `worktree` (ізольований) | немає (main worktree) |
+| Паралельність | так, disjoint scopes | ні — тільки один, після всіх хвиль |
+| Scope | один самостійний зріз | cross-module wiring, центральні реєстри |
+| Передумова | `baseline_sha` попередньої хвилі | checkpoint commit після злиття всіх worktree-гілок |
+| Backport | `BLOCKED` якщо потрібний код не в HEAD | `BLOCKED` якщо merge не виконано |
 
 ---
 
@@ -176,9 +188,36 @@
 ## Files Changed  — які файли змінено і навіщо
 ## Verification   — команди та їх результат
 ## Parallel Handoffs — передача іншим власникам або `None`
+## Review Inputs      — spec/plan, owner scope і metadata для orchestrator-а
 ## Assumptions, Risks, and Follow-ups
 ## Insight Candidates — нетривіальні знахідки для INSIGHTS.md
 ```
+
+---
+
+## integrator
+
+**Файл:** `integrator.md`
+**Модель:** claude-sonnet (effort: high)
+**Інструменти:** Read, Write, Edit, Glob, Grep, Bash, Skill
+**Заборонено:** Agent
+**Режим:** `acceptEdits` | фоновий (`background: true`)
+**Ізоляція:** немає — працює в основному worktree зі вже змердженими змінами
+
+### Призначення
+
+Виконує фінальну інтеграцію після завершення паралельних implementer-хвиль: з'єднує barrel-exports, DI-реєстрацію, cross-module routing і спільні контракти — все, що не могло мати одного owner-а в паралельній хвилі. Після роботи запускає повний test pass і перевіряє `git diff --check`.
+
+### Коли використовувати
+
+- Після того як оркестратор злив усі worktree-гілки, запустив тести і зробив checkpoint commit
+- Коли integration wave потребує змін у центральних реєстрах або точках монтування маршрутів
+
+### Коли НЕ використовувати
+
+- Паралельно з іншими write-агентами
+- Без checkpoint merge — якщо worktree-гілки ще не злиті, повертає `BLOCKED`
+- Для реалізації нових функцій — для цього є `implementer`
 
 ---
 
@@ -283,6 +322,34 @@
 
 ---
 
+## completion-reviewer
+
+**Файл:** `completion-reviewer.md`
+**Модель:** claude-sonnet (effort: medium)
+**Інструменти:** Read, Glob, Grep, Bash
+**Заборонено:** Write, Edit, NotebookEdit, Agent
+**Режим:** `plan` — лише читання
+
+### Призначення
+
+Незалежно перевіряє одну завершену задачу перед прийняттям або checkpoint-комітом. Порівнює commit зі специфікацією та, за наявності, transcript сесії; перевіряє acceptance criteria, owner scope, фактичну валідацію, integration hygiene і результативність промпту.
+
+### Коли використовувати
+
+- Після завершення окремої задачі й створення commit
+- Перед checkpoint або прийняттям результату агента
+- Коли треба відрізнити фактично виконані перевірки від запланованих чи заявлених
+
+### Виклик
+
+```text
+/review-task <commit> <spec> [session-export]
+```
+
+Команда реалізована skill-ом `.claude/skills/review-task/SKILL.md` і запускає reviewer в окремому контексті. Агент не виправляє знайдені проблеми та повертає один вердикт: `PASS`, `CONCERNS` або `BLOCKED`.
+
+---
+
 ## docs-creator
 
 **Файл:** `docs-creator.md`  
@@ -330,3 +397,13 @@
 | `*/AGENTS.md` | Локальні правила кожного пакету |
 
 Скили, на які посилаються агенти (`react-best-practices`, `onion-architecture`, `engineering-insights`, `pr-self-review`), визначені в `.claude/` і доступні через інструмент `Skill`.
+
+## Завершення задачі та незалежне рев'ю
+
+Після user-facing summary головна сесія пропонує рев'ю, але не запускає його автоматично. Якщо commit, spec і transcript уже відомі, вона друкує готову `/review-task` команду. Інакше спочатку пропонує:
+
+```text
+/save-session <spec-path>
+```
+
+`/save-session` зберігає transcript і друкує готовий review handoff. Worktree-Implementer повертає тільки `Review Inputs`; фінальний SHA і команду формує orchestrator після інтеграції.
