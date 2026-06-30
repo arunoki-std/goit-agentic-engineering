@@ -52,6 +52,10 @@ Broad/external research:
 
 Дозволені reason tags для Type 2: `stale check`, `missing evidence`, `cross-check`, `implementation detail`.
 
+**Одиниця читання** — одне звернення до інструменту `Read` або `Bash grep/find` по унікальній парі `(файл, діапазон рядків)` в межах однієї сесії агента. Читання одного файлу двічі без змін між зверненнями: перше — Type 1, друге — Type 2 (з reason tag) або Type 3 (без reason tag).
+
+**Верифікація метрик** — completion-reviewer перевіряє заявлені метрики за фактичними tool call-ами в session export або conversation results. Самозаявлений `Type 3 = 0` без підтвердженого session evidence є недостатнім доказом і повинен бути відмічений як `[P2] unverified Type 3 claim`.
+
 Кожен read-only агент додає до свого виводу read metrics:
 - **researcher** — `## Read Metrics` з підрахунком Type 1 / Type 2 / Type 3 після `## Recommended Spot-checks`.
 - **planner** — `Read metrics: Type 1 = N, Type 2 = N, Type 3 = N` у розділі `## Discovery Reuse`.
@@ -62,7 +66,7 @@ Acceptance thresholds для будь-якої сесії:
 - Проста двофайлова задача: 0 викликів Researcher/Planner, максимум один Explore.
 - Після Researcher — Planner не повторює broad discovery (Type 3 = 0 у Discovery Reuse).
 - Duplicate reads без reason tag: 0 у всіх read-only агентах.
-- Implementer отримує тільки owner scope, symbols і verified evidence.
+- Implementer packet обмежує **discovery context**: owner scope (файли/директорії для зміни), relevant symbols (ключові ідентифікатори) та verified evidence від попереднього агента. Outcome, критерії приймання, dependencies та validation package залишаються обов'язковими незалежно від цього обмеження.
 
 ---
 
@@ -110,6 +114,7 @@ Manual-only агент для широкого, зовнішнього або о
 ## Unknowns
 ## Staleness Risks
 ## Recommended Spot-checks
+## Read Metrics — Type 1 (primary) = N, Type 2 (spot-check) = N, Type 3 (duplicate) = N
 ```
 
 ---
@@ -169,8 +174,9 @@ Manual planning owner для project-specific, cross-package, ризикових
 ```markdown
 # Development Plan: <назва>
 ## Outcome / Context Checked / Scope / Assumptions
+## Discovery Reuse — planning lane, evidence consumed, spot-checks, read metrics (Type 1/2/3)
 ## Architecture Impact (поточний і пропонований потік)
-## Implementation Steps (з owner scope, залежностями, валідацією)
+## Implementation Steps (з owner scope, relevant symbols, залежностями, валідацією)
 ## Parallel Execution (хвилі з disjoint власністю)
 ## Test Matrix
 ## Risks and Rollback
