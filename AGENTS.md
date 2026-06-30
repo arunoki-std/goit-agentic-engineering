@@ -47,6 +47,8 @@ Mutual exclusion: `Plan Mode/Explore XOR @planner`. `@researcher` is manual-only
 
 **End of session:** After work that involved a non-trivial problem, solution, or discovery (>30 min), run `/wrap-up`. It collects insight candidates, applies the anti-banality filter, and writes to the correct INSIGHTS.md. Do not skip — if you skip the wrap-up, the system doesn't learn.
 
+**Efficiency metrics:** After any multi-agent feature session, fill `docs/sessions/metrics/YYYY-MM-DD-<feature>.md` from `docs/sessions/metrics/TEMPLATE.md`. The completion-reviewer output pre-fills the quality columns; fill the token/duration columns from `/context` and conversation timestamps. Read the previous feature's metrics before planning the next one — they are the calibration baseline.
+
 **Task review context:** Before a non-trivial implementation starts, record the current `HEAD` and pre-existing dirty paths. Preserve approved-plan decisions and complete subagent handoffs in the main conversation so `/review-task` can distinguish the task result from earlier user work.
 
 **Post-implementation review handoff:** After a non-trivial implementation is complete and the user-facing summary is given, propose `/review-task` but never launch it automatically. In the same active session, the command must use the conversation's prompt, plan, subagent handoffs, validation evidence, baseline, and current diff; do not require a commit, spec path, or session export. Only when repeating a review from another session should you propose optional artifacts such as `/review-task <commit> <spec> "<session-export>"`. Worktree implementers return review metadata; the main orchestrator preserves it for the reviewer.
