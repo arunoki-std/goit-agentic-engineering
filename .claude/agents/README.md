@@ -1,11 +1,16 @@
 # Агенти DevDigest
 
-Цей каталог містить спеціалізованих агентів Claude Code для проекту DevDigest. Агенти утворюють конвеєр: **researcher** збирає факти, **planner** будує план реалізації, **implementer** втілює його в код. Кожен агент має чітко визначену відповідальність і не виходить за її межі.
+Цей каталог містить спеціалізованих агентів Claude Code для проекту DevDigest. Планування має три взаємовиключні маршрути: звичайна задача використовує Plan Mode, project-specific задача — ручний `@planner`, а зовнішнє дослідження — ручний `@researcher` перед `@planner`. Кожне питання має одного discovery/planning owner-а.
 
 ```
-[researcher] ──→ [planner] ──→ [implementer×N] ──checkpoint merge──→ [integrator]
-   пошук           план         (паралельно,                           (послідовно,
-                                 worktree)                              main worktree)
+Routine/local:
+[Plan Mode + built-in Explore] ──→ implementation
+
+Project-specific:
+[@planner] ──→ [implementer×N] ──checkpoint merge──→ [integrator]
+
+Broad/external research:
+[@researcher] ──Evidence Index──→ [@planner] ──→ [implementer×N] ──→ [integrator]
 
 [test-writer]          — пише тести після реалізації
 [architecture-reviewer]— перевіряє архітектуру перед PR
@@ -13,6 +18,17 @@
 [completion-reviewer]  — незалежно перевіряє завершену задачу перед прийняттям
 [docs-creator]         — генерує документацію
 ```
+
+### Вибір planning lane
+
+| Задача | Режим головної сесії | Що запускати |
+|---|---|---|
+| Звичайна локальна | Plan Mode | Вбудований Explore за потреби; без `@planner` і `@researcher` |
+| Project-specific / cross-package / архітектурна | Normal mode | Ручний `@planner`; без Plan Mode і окремого Explore |
+| Потрібні зовнішні або широкі джерела | Normal mode | Ручний `@researcher`, потім `@planner` з Evidence Index |
+| Мала механічна зміна | Normal mode | Головний агент без planning/research агентів |
+
+Правило взаємного виключення: **Plan Mode/Explore XOR `@planner`**. Researcher ніколи не запускається автоматично.
 
 ### implementer vs integrator
 
@@ -35,18 +51,20 @@
 
 ### Призначення
 
-Шукає інформацію в кодовій базі проекту та в інтернеті й повертає структурований звіт. Використовуйте його, коли потрібно знайти факти, визначити де розташований код, переглянути документацію або отримати відповідь, що потребує як локальних, так і веб-джерел.
+Manual-only агент для широкого, зовнішнього або організаційного дослідження. Повертає компактний Evidence Index, який наступним кроком споживає Planner. Не є обов'язковим етапом кожної задачі.
 
 ### Коли використовувати
 
-- Потрібно знайти, де і як реалізована певна функціональність
-- Треба дослідити зовнішню документацію чи специфікації
-- Завдання сформульоване розпливчасто — агент уточнить мету перед пошуком
+- Користувач явно запускає `@researcher`
+- Треба дослідити зовнішню документацію, стандарти або організаційні джерела
+- Потрібне широке repo-дослідження з одним чітким `Unique question`
 
 ### Коли НЕ використовувати
 
 - Потрібно написати або змінити код — для цього є `implementer`
 - Потрібно спланувати реалізацію — для цього є `planner`
+- Звичайна локальна задача вже виконується в Plan Mode/Explore
+- Planner або інший агент уже досліджує те саме `Unique question`
 
 ### Режим інтерв'ю
 
@@ -54,17 +72,20 @@
 
 ### Стратегія пошуку
 
-1. **Спочатку проект** — `Read` та `grep`/`find` по кодовій базі
-2. **Потім веб** — `WebSearch` + `WebFetch`, якщо потрібні зовнішні знання
-3. **Явні прогалини** — якщо щось не знайдено, повідомляє де саме шукав
+1. Перевіряє `Unique question`, `Search scope` та already-verified evidence
+2. Читає project context лише настільки, наскільки це потрібно для питання
+3. Використовує `WebSearch` + `WebFetch` для зовнішніх знань
+4. Повертає Evidence Index, unknowns, staleness risks і spot-check recommendations
 
 ### Формат виводу
 
 ```
-## Summary       — 3–5 речень про знахідки
-## Findings      — деталі по темах з посиланнями (file.ts:42 або URL)
-## Sources       — перелік джерел
-## Not Found     — що не вдалося знайти і де шукав
+## Question
+## Findings
+## Evidence Index — source, symbol/section, lines, verified claim
+## Unknowns
+## Staleness Risks
+## Recommended Spot-checks
 ```
 
 ---
@@ -72,7 +93,7 @@
 ## planner
 
 **Файл:** `planner.md`  
-**Модель:** claude-opus (effort: high)  
+**Модель:** claude-sonnet (effort: high)
 **Інструменти:** Read, Glob, Grep  
 **Заборонено:** Write, Edit, NotebookEdit  
 **Режим:** `plan` — лише читання та планування  
@@ -80,13 +101,16 @@
 
 ### Призначення
 
-Перетворює продуктовий або інженерний запит на готовий до реалізації план розробки, заземлений у поточному стані репозиторію. Використовуйте його до написання коду, коли задача потребує аналізу архітектури, визначення порядку кроків, маршрутизації скилів або безпечного розподілу паралельної роботи.
+Manual planning owner для project-specific, cross-package, ризикових або архітектурно неоднозначних задач. Запускається як `@planner` з normal mode головної сесії; не комбінується з Plan Mode або окремим Explore для того самого питання.
+
+Якщо перед Planner працював Researcher, передайте лише його Evidence Index. Planner повторно читає код тільки для `stale check`, `missing evidence`, `cross-check` або `implementation detail`.
 
 ### Джерела контексту
 
 Перед плануванням агент обов'язково читає:
 - `INSIGHTS.md` (корінь та пакети) — нетривіальні знахідки з попередніх сесій
-- `AGENTS.md` і `README.md` для кожного зачепленого пакету
+- `AGENTS.md` для кожного зачепленого пакету
+- package README лише коли потрібні факти відсутні в уже перевіреному Evidence Index
 - `TESTING.md`, якщо задача змінює поведінку або охоплює декілька пакетів
 
 Файли пакетів: `client/` (@devdigest/web), `server/` (@devdigest/api), `reviewer-core/`, `e2e/`, `server/src/vendor/shared/`.
@@ -336,7 +360,7 @@
 
 ### Коли використовувати
 
-- Після завершення окремої задачі й створення commit
+- Після завершення окремої задачі, до commit/checkpoint
 - Перед checkpoint або прийняттям результату агента
 - Коли треба відрізнити фактично виконані перевірки від запланованих чи заявлених
 

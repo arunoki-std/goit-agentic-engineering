@@ -28,6 +28,19 @@ Cross-package links = tsconfig path aliases, NOT npm/pnpm links. Each package ha
 - Secrets go to ~/.devdigest/secrets.json (mode 0600), never .env or DB
 - Each package's node_modules is independent — run `pnpm install` inside the package
 
+## Planning lanes
+
+Choose exactly one planning lane per task. Never combine lanes for the same `Unique question`.
+
+| Task type | Main-session mode | Planning owner | Research |
+|---|---|---|---|
+| Routine/local | Plan Mode | Main Claude + built-in Explore when needed | No custom Researcher or Planner |
+| Project-specific, cross-package, or architecture-sensitive | Normal mode | Manually invoked `@planner` | No separate Explore for the Planner's question |
+| Broad/external research required | Normal mode | Manually invoked `@researcher`, then `@planner` | Researcher returns an Evidence Index consumed by Planner |
+| Small mechanical change | Normal mode | Main Claude | No planning/research agent |
+
+Mutual exclusion: `Plan Mode/Explore XOR @planner`. `@researcher` is manual-only and runs only when the user explicitly requests research; it must not be auto-launched for routine local discovery. When Researcher is used, do not launch Explore for the same `Unique question`, and pass its Evidence Index to Planner instead of the full narrative report.
+
 ## Session protocol
 
 **Start of session:** Read INSIGHTS.md, then confirm with a one-sentence summary of the top 3 most relevant points before beginning work. This forces active processing, not passive load.

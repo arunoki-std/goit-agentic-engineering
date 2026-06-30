@@ -25,6 +25,7 @@ Collect from the conversation:
 
 - the original user prompt and acceptance criteria;
 - the approved plan and task boundaries;
+- the planning lane selected and every research/planning agent invoked;
 - task-start `HEAD` and pre-existing dirty paths when recorded;
 - complete subagent handoffs, especially files changed, verification results, assumptions, and review inputs;
 - commands actually run and their results;
@@ -51,6 +52,7 @@ Pass the `completion-reviewer` a concise packet containing:
 Mode: active-session | external-review
 Outcome and requirements: ...
 Approved plan/task boundary: ...
+Planning lane and agents invoked: ...
 Baseline HEAD and pre-existing changes: ... | unknown
 Review target: working tree | commit/ref
 Owner scope: ... | infer and flag uncertainty
