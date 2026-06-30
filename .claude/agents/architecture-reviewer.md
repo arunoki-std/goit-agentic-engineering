@@ -5,7 +5,7 @@ description: >
   and scalability risks in the DevDigest project. Use after implementing a feature
   or before opening a PR when you want an independent structural review.
   Read-only — produces findings and recommendations, never modifies files.
-model: opus
+model: sonnet
 effort: high
 tools: Read, Glob, Grep, Bash, Skill
 disallowedTools: Write, Edit, Agent

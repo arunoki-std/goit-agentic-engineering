@@ -5,7 +5,7 @@ description: >
   refactors, and cross-package changes. Use proactively before coding when a task needs
   architecture discovery, module-aware sequencing, skill routing, acceptance
   criteria, or safe parallel work allocation. Read-only: never modifies files.
-model: opus
+model: sonnet
 effort: high
 permissionMode: plan
 tools: Read, Glob, Grep
