@@ -1,5 +1,5 @@
 ---
-description: Save the current transcript and prepare an independent task-review command
+description: Save the current transcript and optionally prepare a cross-session review command
 argument-hint: [spec-path]
 arguments:
   - spec
@@ -43,11 +43,12 @@ Date: YYYY-MM-DD
 Після збереження:
 
 1. Повідом точний шлях створеного transcript-файлу.
-2. Якщо `$spec` містить spec path і до збереження робоче дерево було чистим, надрукуй готову команду:
+2. Поясни, що в активній сесії незалежне рев'ю запускається без аргументів: `/review-task`; transcript для цього не потрібний.
+3. Якщо `$spec` містить spec path і до збереження робоче дерево було чистим, додатково надрукуй команду для повторного рев'ю з іншої сесії:
 
    ```text
    /review-task HEAD "$spec" "<created-session-path>"
    ```
 
-3. Якщо до збереження були незакомічені зміни, не стверджуй, що `HEAD` містить виконану задачу. Надрукуй: `Після коміту виконайте:` і ту саму команду з `HEAD`.
-4. Якщо spec path не передано, покажи шаблон `/review-task HEAD <spec-path> "<created-session-path>"` і попроси підставити специфікацію.
+4. Якщо до збереження були незакомічені зміни, не стверджуй, що `HEAD` містить виконану задачу. Для cross-session replay надрукуй: `Після коміту виконайте:` і ту саму команду з `HEAD`.
+5. Якщо spec path не передано, не вимагай його для поточного рев'ю. Лише покажи необов'язковий cross-session шаблон `/review-task [commit-or-artifact ...]`.

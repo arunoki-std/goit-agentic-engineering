@@ -34,7 +34,9 @@ Cross-package links = tsconfig path aliases, NOT npm/pnpm links. Each package ha
 
 **End of session:** After work that involved a non-trivial problem, solution, or discovery (>30 min), run `/wrap-up`. It collects insight candidates, applies the anti-banality filter, and writes to the correct INSIGHTS.md. Do not skip — if you skip the wrap-up, the system doesn't learn.
 
-**Post-implementation review handoff:** After a non-trivial implementation is complete and the user-facing summary is given, propose an independent review but never launch it automatically. When the final commit, specification path, and session export are known, print the exact command `/review-task <commit> <spec> "<session-export>"`. If the commit or export is not available yet, state the missing prerequisite and propose `/save-session <spec-path>`; never invent a SHA or path. Worktree implementers only return review metadata—the main orchestrator owns the final command after integration and commit.
+**Task review context:** Before a non-trivial implementation starts, record the current `HEAD` and pre-existing dirty paths. Preserve approved-plan decisions and complete subagent handoffs in the main conversation so `/review-task` can distinguish the task result from earlier user work.
+
+**Post-implementation review handoff:** After a non-trivial implementation is complete and the user-facing summary is given, propose `/review-task` but never launch it automatically. In the same active session, the command must use the conversation's prompt, plan, subagent handoffs, validation evidence, baseline, and current diff; do not require a commit, spec path, or session export. Only when repeating a review from another session should you propose optional artifacts such as `/review-task <commit> <spec> "<session-export>"`. Worktree implementers return review metadata; the main orchestrator preserves it for the reviewer.
 
 **Rules for entries:**
 - Format: `[YYYY-MM-DD] <finding> — <file:line>`

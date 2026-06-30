@@ -332,7 +332,7 @@
 
 ### Призначення
 
-Незалежно перевіряє одну завершену задачу перед прийняттям або checkpoint-комітом. Порівнює commit зі специфікацією та, за наявності, transcript сесії; перевіряє acceptance criteria, owner scope, фактичну валідацію, integration hygiene і результативність промпту.
+Незалежно перевіряє одну завершену задачу перед прийняттям або checkpoint-комітом. У поточній сесії отримує від головного агента original prompt, approved plan, handoff-звіти субагентів, validation evidence і working-tree diff; для повторного рев'ю може використовувати commit, spec або transcript.
 
 ### Коли використовувати
 
@@ -343,10 +343,16 @@
 ### Виклик
 
 ```text
-/review-task <commit> <spec> [session-export]
+/review-task
 ```
 
-Команда реалізована skill-ом `.claude/skills/review-task/SKILL.md` і запускає reviewer в окремому контексті. Агент не виправляє знайдені проблеми та повертає один вердикт: `PASS`, `CONCERNS` або `BLOCKED`.
+Аргументи не потрібні, коли задача щойно виконана в активному чаті. Для повторного запуску з іншої сесії можна передати будь-які доступні артефакти:
+
+```text
+/review-task <commit> <spec> "<session-export>"
+```
+
+Skill `.claude/skills/review-task/SKILL.md` спочатку формує review packet із поточного контексту, а потім делегує незалежному reviewer-у. Агент не виправляє знайдені проблеми та повертає один вердикт: `PASS`, `CONCERNS` або `BLOCKED`.
 
 ---
 
@@ -400,10 +406,10 @@
 
 ## Завершення задачі та незалежне рев'ю
 
-Після user-facing summary головна сесія пропонує рев'ю, але не запускає його автоматично. Якщо commit, spec і transcript уже відомі, вона друкує готову `/review-task` команду. Інакше спочатку пропонує:
+Після user-facing summary головна сесія пропонує рев'ю, але не запускає його автоматично:
 
 ```text
-/save-session <spec-path>
+/review-task
 ```
 
-`/save-session` зберігає transcript і друкує готовий review handoff. Worktree-Implementer повертає тільки `Review Inputs`; фінальний SHA і команду формує orchestrator після інтеграції.
+Команда бере вимоги, план, результати інструментів і handoff-и субагентів із поточного чату та перевіряє незакомічений результат. `/save-session` потрібен лише для архіву або повторного cross-session review. Worktree-Implementer повертає `Review Inputs`, а orchestrator додає їх до review packet.
